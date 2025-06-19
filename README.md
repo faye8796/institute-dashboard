@@ -8,215 +8,187 @@
 
 ## 🚀 주요 기능
 
-- **담당자 로그인**: 학당명, 담당자명, 인증코드로 로그인
-- **인턴 현황 조회**: 해당 학당에 배정된 문화인턴 목록 확인
-- **재단 담당자 정보**: 세종학당재단 담당자 연락처 및 업무 정보
-- **반응형 디자인**: 모바일과 데스크톱 모두 지원
-- **인쇄 기능**: 인턴 목록을 인쇄 가능
+- **👤 담당자 로그인**: 학당명, 담당자명, 인증코드로 안전한 로그인
+- **📊 인턴 현황 대시보드**: 해당 학당에 배정된 문화인턴 목록과 통계
+- **👥 재단 담당자 정보**: 세종학당재단 담당자 연락처 및 업무 정보
+- **📱 반응형 디자인**: 모바일, 태블릿, 데스크톱 모든 환경 지원
+- **🖨️ 인쇄 기능**: 인턴 목록을 깔끔하게 인쇄 가능
+- **🔄 실시간 데이터**: Supabase를 통한 실시간 데이터 동기화
 
-## 📋 사용 방법
+## 📸 스크린샷
 
-### 1. 접속
-브라우저에서 페이지에 접속합니다.
+### 로그인 페이지
+<img src=\"https://via.placeholder.com/800x600/667eea/ffffff?text=Login+Page\" alt=\"로그인 페이지\" width=\"400\"/>
 
-### 2. 로그인
-- **학당명**: 담당하고 있는 세종학당명 입력
-- **담당자 이름**: 본인의 이름 입력
-- **인증코드**: 제공받은 인증코드 입력
+### 대시보드 메인
+<img src=\"https://via.placeholder.com/800x600/667eea/ffffff?text=Dashboard+Main\" alt=\"대시보드 메인\" width=\"400\"/>
 
-### 3. 대시보드 확인
-로그인 후 다음 정보를 확인할 수 있습니다:
-- 배정된 문화인턴 수
-- 각 인턴의 상세 정보 (이름, 생년월일, 전문분야)
-- 세종학당재단 담당자 연락처
+## 📋 빠른 시작
 
-## 🛠️ 기술 스택
+### 1. 테스트 환경에서 바로 사용
+```
+🔗 데모 링크: https://faye8796.github.io/institute-dashboard
 
+📝 테스트 계정:
+학당명: 서울세종학당
+담당자명: 김담당
+인증코드: seoul2024
+```
+
+### 2. 로컬 환경에서 실행
+```bash
+# 1. 레포지토리 클론
+git clone https://github.com/faye8796/institute-dashboard.git
+cd institute-dashboard
+
+# 2. 로컬 서버 실행
+python -m http.server 8000
+# 또는
+npx serve .
+
+# 3. 브라우저에서 접속
+http://localhost:8000
+```
+
+## 🛠️ 시스템 구성
+
+### 기술 스택
 - **Frontend**: HTML5, CSS3, JavaScript (ES6+)
 - **Database**: Supabase (PostgreSQL)
+- **Styling**: CSS Grid, Flexbox, CSS Custom Properties
 - **Icons**: Lucide Icons
-- **Styling**: CSS Grid, Flexbox, CSS Variables
+- **Deployment**: GitHub Pages
+
+### 아키텍처
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   브라우저       │    │   GitHub Pages  │    │   Supabase      │
+│                │    │                │    │                │
+│ • HTML/CSS/JS  │◄──►│ • 정적 호스팅    │◄──►│ • PostgreSQL   │
+│ • 반응형 UI    │    │ • HTTPS 지원    │    │ • Real-time API │
+│ • 인쇄 지원    │    │ • CDN 배포      │    │ • 인증/보안     │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
 
 ## 📁 프로젝트 구조
 
 ```
 institute-dashboard/
-├── index.html          # 메인 HTML 파일
-├── css/
-│   └── main.css        # 스타일시트
-├── js/
-│   ├── config.js       # 설정 파일
-│   └── app.js          # 메인 애플리케이션 로직
-└── README.md
+├── 📄 index.html              # 메인 애플리케이션
+├── 📁 css/
+│   └── main.css              # 스타일시트
+├── 📁 js/
+│   ├── config.js             # 설정 파일
+│   └── app.js                # 메인 애플리케이션 로직
+├── 📁 database/
+│   ├── schema.sql            # 데이터베이스 스키마
+│   └── sample_data.sql       # 샘플 데이터
+├── 📁 docs/
+│   ├── SETUP_GUIDE.md        # 설정 가이드
+│   └── API_REFERENCE.md      # API 참조 문서
+└── 📄 README.md              # 프로젝트 개요
 ```
 
-## 🗄️ 데이터베이스 구조
+## 🗄️ 데이터베이스 스키마
 
-### user_profiles (기존 테이블)
-학생(인턴) 정보를 저장하는 테이블
+### 핵심 테이블 구조
 ```sql
-user_profiles (
-    id UUID PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    birth_date DATE,
-    sejong_institute VARCHAR(100),
-    field VARCHAR(50),
-    user_type VARCHAR(20) -- 'student'
-)
-```
-
-### institute_managers (새로 필요한 테이블)
-학당 담당자 정보를 저장하는 테이블
-```sql
+-- 학당 담당자 (로그인 정보)
 institute_managers (
-    id UUID PRIMARY KEY,
-    institute_name VARCHAR(100) NOT NULL,
-    manager_name VARCHAR(100) NOT NULL,
-    auth_code VARCHAR(50) NOT NULL,
-    phone VARCHAR(20),
-    email VARCHAR(100),
-    created_at TIMESTAMP DEFAULT NOW()
+    id, institute_name, manager_name, 
+    auth_code, phone, email
 )
-```
 
-### foundation_managers (새로 필요한 테이블)
-재단 담당자 정보를 저장하는 테이블
-```sql
+-- 재단 담당자 (연락처 정보)  
 foundation_managers (
-    id UUID PRIMARY KEY,
-    institute_name VARCHAR(100) NOT NULL,
-    name VARCHAR(100) NOT NULL,
-    phone VARCHAR(20),
-    email VARCHAR(100),
-    role VARCHAR(100),
-    created_at TIMESTAMP DEFAULT NOW()
+    id, institute_name, name, 
+    phone, email, role
+)
+
+-- 문화인턴 (배정 정보)
+user_profiles (
+    id, name, birth_date, sejong_institute,
+    field, user_type, phone, email
 )
 ```
 
-## 🔧 설정
+## 🔧 설정 및 배포
 
-### Supabase 연결
-`js/config.js` 파일에서 Supabase 연결 정보를 설정합니다:
-```javascript
-const CONFIG = {
-    SUPABASE: {
-        URL: 'your-supabase-url',
-        ANON_KEY: 'your-anon-key'
-    }
-};
-```
+### 1. Supabase 설정
+1. [Supabase](https://supabase.com)에서 새 프로젝트 생성
+2. `database/schema.sql` 실행으로 테이블 생성
+3. `database/sample_data.sql` 실행으로 샘플 데이터 삽입
+4. API URL과 키를 `js/config.js`에 설정
 
-## 🚦 로컬 개발
+### 2. GitHub Pages 배포
+1. 이 레포지토리를 포크하거나 클론
+2. `js/config.js`에서 Supabase 설정 업데이트
+3. GitHub Pages 활성화
+4. 자동 배포 완료
 
-### 1. 파일 다운로드
-```bash
-git clone https://github.com/faye8796/institute-dashboard.git
-cd institute-dashboard
-```
+📖 **자세한 설정 방법**: [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md)
 
-### 2. 로컬 서버 실행
-```bash
-# Python을 사용하는 경우
-python -m http.server 8000
+## 🧪 테스트 계정
 
-# Node.js를 사용하는 경우
-npx serve .
+시스템 테스트를 위한 사전 준비된 계정들:
 
-# Live Server VS Code 확장프로그램 사용
-```
-
-### 3. 브라우저에서 접속
-```
-http://localhost:8000
-```
-
-## 📊 데이터베이스 설정
-
-### 1. 테이블 생성
-Supabase에서 다음 SQL을 실행하여 필요한 테이블을 생성합니다:
-
-```sql
--- 학당 담당자 테이블
-CREATE TABLE institute_managers (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    institute_name VARCHAR(100) NOT NULL,
-    manager_name VARCHAR(100) NOT NULL,
-    auth_code VARCHAR(50) NOT NULL,
-    phone VARCHAR(20),
-    email VARCHAR(100),
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- 재단 담당자 테이블
-CREATE TABLE foundation_managers (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    institute_name VARCHAR(100) NOT NULL,
-    name VARCHAR(100) NOT NULL,
-    phone VARCHAR(20),
-    email VARCHAR(100),
-    role VARCHAR(100),
-    created_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-### 2. 샘플 데이터 입력
-```sql
--- 학당 담당자 샘플 데이터
-INSERT INTO institute_managers (institute_name, manager_name, auth_code, phone, email) VALUES
-('서울세종학당', '김담당', 'seoul2024', '02-1234-5678', 'kim@seoul.sejong.kr'),
-('부산세종학당', '박관리', 'busan2024', '051-1234-5678', 'park@busan.sejong.kr');
-
--- 재단 담당자 샘플 데이터
-INSERT INTO foundation_managers (institute_name, name, phone, email, role) VALUES
-('서울세종학당', '홍길동', '02-1234-5678', 'hong@sejong.or.kr', '해외 문화인턴 담당'),
-('부산세종학당', '이순신', '02-1234-5679', 'lee@sejong.or.kr', '지역 협력 담당');
-```
-
-## 📱 화면 구성
-
-### 1. 로그인 페이지
-- 학당명, 담당자명, 인증코드 입력
-- 간편한 인증 시스템
-
-### 2. 대시보드 페이지
-- **요약 카드**: 배정된 인턴 수, 재단 담당자명
-- **재단 담당자 정보**: 이름, 연락처, 이메일, 담당업무
-- **인턴 목록**: 배정된 인턴들의 상세 정보
-
-### 3. 반응형 지원
-- **데스크톱**: 1200px 이상
-- **태블릿**: 768px - 1199px
-- **모바일**: 767px 이하
-
-## 🔒 보안
-
-- Row Level Security (RLS) 적용 권장
-- 인증코드를 통한 접근 제어
-- 민감한 정보는 필요한 범위 내에서만 표시
+| 학당명 | 담당자명 | 인증코드 | 배정된 인턴 수 |
+|--------|----------|----------|---------------|
+| 서울세종학당 | 김담당 | `seoul2024` | 5명 |
+| 부산세종학당 | 박관리 | `busan2024` | 4명 |
+| 대구세종학당 | 이책임 | `daegu2024` | 4명 |
+| 인천세종학당 | 정주임 | `incheon2024` | 2명 |
 
 ## 🔗 관련 시스템
 
-- [세종학당 문화인턴 배정 공지](https://github.com/faye8796/intern-announcement) - 학생용 배정 결과 확인 페이지
-- [세종학당 문화교구 신청 플랫폼](https://github.com/faye8796/request) - 기본 신청 시스템
+이 시스템은 세종학당 문화인턴 관리 생태계의 일부입니다:
 
-## 🐛 문제 해결
+- **[학생용 배정 결과 확인](https://github.com/faye8796/intern-announcement)** - 인턴들이 배정 결과를 확인하는 페이지
+- **[문화교구 신청 플랫폼](https://github.com/faye8796/request)** - 기본 신청 및 관리 시스템
 
-### 자주 발생하는 문제
+## 📱 지원 환경
 
-1. **로그인이 안 되는 경우**
-   - 학당명, 담당자명, 인증코드가 정확한지 확인
-   - 데이터베이스에 해당 정보가 등록되어 있는지 확인
+### 브라우저 지원
+- ✅ Chrome 90+
+- ✅ Firefox 88+
+- ✅ Safari 14+
+- ✅ Edge 90+
 
-2. **인턴 목록이 보이지 않는 경우**
-   - user_profiles 테이블에 해당 학당으로 배정된 학생이 있는지 확인
-   - sejong_institute 필드값이 정확한지 확인
+### 반응형 지원
+- 📱 **모바일**: 320px ~ 767px
+- 📟 **태블릿**: 768px ~ 1199px  
+- 💻 **데스크톱**: 1200px+
 
-3. **재단 담당자 정보가 보이지 않는 경우**
-   - foundation_managers 테이블에 해당 학당 정보가 있는지 확인
+## 🔒 보안 기능
 
-## 📞 지원
+- **🛡️ Row Level Security**: Supabase RLS로 데이터 접근 제어
+- **🔐 인증 시스템**: 3단계 인증 (학당명 + 담당자명 + 인증코드)
+- **🌐 HTTPS**: GitHub Pages 기본 HTTPS 지원
+- **🚫 민감정보 보호**: 필요한 정보만 노출
 
-문제가 발생하거나 질문이 있으시면 관리자에게 문의해주세요.
+## 📈 향후 개발 계획
+
+- [ ] 📊 **고급 통계**: 인턴 배정 현황 차트 및 분석
+- [ ] 📧 **이메일 알림**: 배정 변경사항 자동 알림
+- [ ] 📱 **PWA 지원**: 모바일 앱처럼 사용 가능
+- [ ] 🔄 **배치 관리**: 인턴 재배정 기능
+- [ ] 🌍 **다국어 지원**: 영어/중국어 버전
+- [ ] 📊 **대시보드 확장**: 더 상세한 관리 기능
+
+## 🐛 버그 리포트 & 기능 요청
+
+시스템 사용 중 문제가 있거나 새로운 기능이 필요하시면:
+
+1. **GitHub Issues**: [이슈 등록](https://github.com/faye8796/institute-dashboard/issues)
+2. **이메일**: 관리자에게 직접 연락
+3. **디버깅**: 브라우저 콘솔에서 `DashboardApp.debug()` 실행
+
+## 📞 지원 및 문의
+
+- 📧 **기술 지원**: 시스템 관리자
+- 📖 **문서**: [docs/](docs/) 폴더의 상세 가이드
+- 🔧 **설정 도움**: [SETUP_GUIDE.md](docs/SETUP_GUIDE.md)
+- 🔍 **API 참조**: [API_REFERENCE.md](docs/API_REFERENCE.md)
 
 ## 📄 라이선스
 
@@ -224,4 +196,13 @@ INSERT INTO foundation_managers (institute_name, name, phone, email, role) VALUE
 
 ---
 
-**🎯 목적**: 세종학당 담당자가 배정된 인턴 정보를 쉽게 확인하고 재단과 원활한 소통을 위한 대시보드 제공
+<div align=\"center\">
+
+**🎯 세종학당 문화인턴 관리의 새로운 표준**
+
+*Made with ❤️ for Sejong Institute*
+
+[![GitHub stars](https://img.shields.io/github/stars/faye8796/institute-dashboard.svg?style=social&label=Star)](https://github.com/faye8796/institute-dashboard)
+[![GitHub forks](https://img.shields.io/github/forks/faye8796/institute-dashboard.svg?style=social&label=Fork)](https://github.com/faye8796/institute-dashboard/fork)
+
+</div>
