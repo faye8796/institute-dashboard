@@ -12,6 +12,9 @@ const DashboardApp = {
     // 재단 담당자 정보
     foundationManager: null,
 
+    // 현재 다운로드 대상 문서 정보
+    currentDocument: null,
+
     // 초기화
     async init() {
         console.log('🚀 Dashboard App 초기화 중...');
@@ -82,6 +85,44 @@ const DashboardApp = {
         const printBtn = document.getElementById('printBtn');
         if (printBtn) {
             printBtn.addEventListener('click', () => this.printPage());
+        }
+
+        // 전체 지원서류 다운로드 버튼
+        const downloadAllBtn = document.getElementById('downloadAllBtn');
+        if (downloadAllBtn) {
+            downloadAllBtn.addEventListener('click', () => this.downloadAllDocuments());
+        }
+
+        // 모달 관련 이벤트
+        this.setupModalEvents();
+    },
+
+    // 모달 이벤트 설정
+    setupModalEvents() {
+        const modal = document.getElementById('documentModal');
+        const closeBtn = document.getElementById('closeModal');
+        const confirmBtn = document.getElementById('confirmDownload');
+        const cancelBtn = document.getElementById('cancelDownload');
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.closeModal());
+        }
+
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', () => this.confirmDownload());
+        }
+
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => this.closeModal());
+        }
+
+        // 모달 외부 클릭 시 닫기
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    this.closeModal();
+                }
+            });
         }
     },
 
@@ -213,7 +254,7 @@ const DashboardApp = {
         }
     },
 
-    // 배치된 인턴 목록 조회
+    // 배치된 인턴 목록 조회 (지원서류 정보 포함)
     async loadAssignedInterns() {
         try {
             const { data, error } = await this.supabase
@@ -309,6 +350,7 @@ const DashboardApp = {
     updateSummaryCards() {
         const totalInternsEl = document.getElementById('totalInterns');
         const foundationManagerEl = document.getElementById('foundationManager');
+        const totalDocumentsEl = document.getElementById('totalDocuments');
 
         if (totalInternsEl) {
             totalInternsEl.textContent = this.assignedInterns.length;
@@ -316,6 +358,11 @@ const DashboardApp = {
 
         if (foundationManagerEl) {
             foundationManagerEl.textContent = this.foundationManager?.name || '-';
+        }
+
+        if (totalDocumentsEl) {
+            const documentsCount = this.assignedInterns.filter(intern => intern.application_document_url).length;
+            totalDocumentsEl.textContent = documentsCount;
         }
     },
 
@@ -336,7 +383,7 @@ const DashboardApp = {
         });
     },
 
-    // 인턴 목록 업데이트
+    // 인턴 목록 업데이트 (지원서류 다운로드 버튼 포함)
     updateInternsList() {
         const internsListEl = document.getElementById('internsList');
         
@@ -362,6 +409,17 @@ const DashboardApp = {
                 <div class="intern-header">
                     <div class="intern-name">${intern.name || '-'}</div>
                     <div class="intern-field">${intern.field || '전문분야'}</div>
+                    ${intern.application_document_url ? `
+                        <button class="download-btn" onclick="DashboardApp.openDownloadModal('${intern.id}')">
+                            <i data-lucide="download"></i>
+                            지원서류
+                        </button>
+                    ` : `
+                        <span class="no-document">
+                            <i data-lucide="file-x"></i>
+                            지원서류 없음
+                        </span>
+                    `}
                 </div>
                 <div class="intern-details">
                     <div class="detail-item">
@@ -380,6 +438,12 @@ const DashboardApp = {
                         <i data-lucide="user-check"></i>
                         <span>상태: 배치 완료</span>
                     </div>
+                    ${intern.application_submitted_at ? `
+                        <div class="detail-item">
+                            <i data-lucide="file-text"></i>
+                            <span>지원서 제출일: ${this.formatDate(intern.application_submitted_at)}</span>
+                        </div>
+                    ` : ''}
                 </div>
             </div>
         `).join('');
@@ -392,11 +456,113 @@ const DashboardApp = {
         }
     },
 
+    // 다운로드 모달 열기
+    openDownloadModal(internId) {
+        const intern = this.assignedInterns.find(i => i.id === internId);
+        if (!intern || !intern.application_document_url) {
+            alert('지원서류를 찾을 수 없습니다.');
+            return;
+        }
+
+        this.currentDocument = {
+            internId: internId,
+            internName: intern.name,
+            fileName: intern.application_document_name || '지원서류.pdf',
+            url: intern.application_document_url
+        };
+
+        // 모달 정보 업데이트
+        const studentNameEl = document.getElementById('modalStudentName');
+        const fileNameEl = document.getElementById('modalFileName');
+
+        if (studentNameEl) {
+            studentNameEl.textContent = intern.name || '-';
+        }
+
+        if (fileNameEl) {
+            fileNameEl.textContent = intern.application_document_name || '지원서류.pdf';
+        }
+
+        // 모달 표시
+        const modal = document.getElementById('documentModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+    },
+
+    // 모달 닫기
+    closeModal() {
+        const modal = document.getElementById('documentModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+        this.currentDocument = null;
+    },
+
+    // 다운로드 확인
+    confirmDownload() {
+        if (!this.currentDocument) {
+            alert('다운로드할 문서 정보가 없습니다.');
+            return;
+        }
+
+        this.downloadDocument(this.currentDocument.url, this.currentDocument.fileName);
+        this.closeModal();
+    },
+
+    // 개별 문서 다운로드
+    downloadDocument(url, fileName) {
+        try {
+            // 실제 환경에서는 실제 URL로 다운로드
+            // 현재는 테스트용으로 알림 표시
+            if (url.includes('example.com')) {
+                alert(`실제 환경에서는 "${fileName}" 파일이 다운로드됩니다.\n\n테스트 URL: ${url}`);
+                console.log('다운로드 시뮬레이션:', { url, fileName });
+            } else {
+                // 실제 파일 다운로드
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = fileName;
+                link.target = '_blank';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        } catch (error) {
+            console.error('다운로드 오류:', error);
+            alert('파일 다운로드 중 오류가 발생했습니다.');
+        }
+    },
+
+    // 전체 지원서류 다운로드
+    downloadAllDocuments() {
+        const documentsWithFiles = this.assignedInterns.filter(intern => intern.application_document_url);
+        
+        if (documentsWithFiles.length === 0) {
+            alert('다운로드할 지원서류가 없습니다.');
+            return;
+        }
+
+        const confirmDownload = confirm(`총 ${documentsWithFiles.length}개의 지원서류를 다운로드하시겠습니까?`);
+        
+        if (confirmDownload) {
+            documentsWithFiles.forEach((intern, index) => {
+                setTimeout(() => {
+                    const fileName = intern.application_document_name || `${intern.name}_지원서류.pdf`;
+                    this.downloadDocument(intern.application_document_url, fileName);
+                }, index * 1000); // 1초 간격으로 다운로드
+            });
+        }
+    },
+
     // 로그아웃 처리
     handleLogout() {
         this.currentManager = null;
         this.assignedInterns = [];
         this.foundationManager = null;
+        this.currentDocument = null;
         this.showPage('loginPage');
         
         // 첫 번째 입력 필드에 포커스
@@ -441,6 +607,7 @@ const DashboardApp = {
         this.currentManager = null;
         this.assignedInterns = [];
         this.foundationManager = null;
+        this.currentDocument = null;
         this.showPage('loginPage');
         
         // 첫 번째 입력 필드에 포커스
@@ -497,6 +664,7 @@ const DashboardApp = {
                 currentManager: this.currentManager,
                 assignedInterns: this.assignedInterns,
                 foundationManager: this.foundationManager,
+                currentDocument: this.currentDocument,
                 supabaseConnected: !!this.supabase,
                 config: CONFIG
             });
