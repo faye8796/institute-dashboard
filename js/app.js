@@ -467,7 +467,7 @@ const DashboardApp = {
         this.currentDocument = {
             internId: internId,
             internName: intern.name,
-            fileName: intern.application_document_name || '지원서류.pdf',
+            fileName: intern.application_document_name || `${intern.name}_지원서.pdf`,
             url: intern.application_document_url
         };
 
@@ -480,7 +480,7 @@ const DashboardApp = {
         }
 
         if (fileNameEl) {
-            fileNameEl.textContent = intern.application_document_name || '지원서류.pdf';
+            fileNameEl.textContent = intern.application_document_name || `${intern.name}_지원서.pdf`;
         }
 
         // 모달 표시
@@ -550,7 +550,7 @@ const DashboardApp = {
         if (confirmDownload) {
             documentsWithFiles.forEach((intern, index) => {
                 setTimeout(() => {
-                    const fileName = intern.application_document_name || `${intern.name}_지원서류.pdf`;
+                    const fileName = intern.application_document_name || `${intern.name}_지원서.pdf`;
                     this.downloadDocument(intern.application_document_url, fileName);
                 }, index * 1000); // 1초 간격으로 다운로드
             });
