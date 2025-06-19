@@ -56,7 +56,7 @@ const DashboardApp = {
         }
 
         // Enter 키 이벤트
-        const inputs = ['instituteName', 'managerName', 'authCode'];
+        const inputs = ['instituteName', 'managerName'];
         inputs.forEach(id => {
             const input = document.getElementById(id);
             if (input) {
@@ -89,17 +89,15 @@ const DashboardApp = {
     async handleLogin() {
         const instituteInput = document.getElementById('instituteName');
         const managerInput = document.getElementById('managerName');
-        const authInput = document.getElementById('authCode');
         const loginBtn = document.getElementById('managerLoginBtn');
 
-        if (!instituteInput || !managerInput || !authInput || !loginBtn) {
+        if (!instituteInput || !managerInput || !loginBtn) {
             console.error('필수 요소를 찾을 수 없습니다.');
             return;
         }
 
         const instituteName = instituteInput.value.trim();
         const managerName = managerInput.value.trim();
-        const authCode = authInput.value.trim();
 
         // 입력 검증
         if (!instituteName) {
@@ -114,19 +112,13 @@ const DashboardApp = {
             return;
         }
 
-        if (!authCode) {
-            alert('인증 코드를 입력해주세요.');
-            authInput.focus();
-            return;
-        }
-
         // 로딩 상태 표시
         this.showLoading(true);
         loginBtn.disabled = true;
 
         try {
-            // 담당자 인증
-            const manager = await this.authenticateManager(instituteName, managerName, authCode);
+            // 담당자 인증 (2단계 인증: 학당명 + 담당자명)
+            const manager = await this.authenticateManager(instituteName, managerName);
             
             if (manager) {
                 this.currentManager = manager;
@@ -137,7 +129,7 @@ const DashboardApp = {
                 // 대시보드 표시
                 this.showDashboard();
             } else {
-                this.showError('입력하신 정보가 올바르지 않습니다.<br>학당명, 담당자 이름, 인증 코드를 다시 확인해주세요.');
+                this.showError('입력하신 정보가 올바르지 않습니다.<br>학당명과 담당자 이름을 다시 확인해주세요.');
             }
         } catch (error) {
             console.error('로그인 처리 중 오류:', error);
@@ -148,27 +140,37 @@ const DashboardApp = {
         }
     },
 
-    // 담당자 인증
-    async authenticateManager(instituteName, managerName, authCode) {
+    // 담당자 인증 (2단계 인증: 학당명 + 담당자명)
+    async authenticateManager(instituteName, managerName) {
         try {
             if (!this.supabase) {
                 throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
             }
 
-            // 임시 인증 로직 (실제로는 institute_managers 테이블에서 조회)
-            // 현재는 간단한 검증으로 구현
+            // 1. institute_managers 테이블에서 조회 시도
             const { data, error } = await this.supabase
                 .from('institute_managers')
                 .select('*')
                 .eq('institute_name', instituteName)
                 .eq('manager_name', managerName)
-                .eq('auth_code', authCode)
                 .single();
 
             if (error) {
                 if (error.code === 'PGRST116') {
-                    // 데이터가 없는 경우 - 임시로 모든 입력을 허용
-                    console.warn('institute_managers 테이블이 없습니다. 임시 인증을 사용합니다.');
+                    // 데이터가 없는 경우, user_profiles에서 해당 학당이 있는지 확인
+                    const { data: instituteCheck, error: checkError } = await this.supabase
+                        .from('user_profiles')
+                        .select('sejong_institute')
+                        .eq('sejong_institute', instituteName)
+                        .limit(1);
+
+                    if (checkError || !instituteCheck || instituteCheck.length === 0) {
+                        console.warn('존재하지 않는 학당입니다:', instituteName);
+                        return null;
+                    }
+
+                    // 학당은 존재하지만 등록된 담당자가 없는 경우 임시 인증 허용
+                    console.info('학당은 존재하지만 등록된 담당자가 없습니다. 임시 인증을 허용합니다.');
                     return {
                         institute_name: instituteName,
                         manager_name: managerName,
@@ -181,15 +183,17 @@ const DashboardApp = {
             return data;
         } catch (error) {
             console.error('담당자 인증 오류:', error);
-            // 개발 단계에서는 임시 인증 허용
-            if (error.message.includes('relation "institute_managers" does not exist')) {
-                console.warn('테이블이 존재하지 않습니다. 임시 인증을 사용합니다.');
+            
+            // 테이블이 존재하지 않는 경우 등의 시스템 오류 시 임시 인증
+            if (error.message.includes('relation') || error.message.includes('does not exist')) {
+                console.warn('시스템 오류로 인한 임시 인증을 사용합니다.');
                 return {
                     institute_name: instituteName,
                     manager_name: managerName,
                     id: 'temp-' + Date.now()
                 };
             }
+            
             return null;
         }
     },
@@ -244,7 +248,7 @@ const DashboardApp = {
                     // 데이터가 없는 경우 기본값 설정
                     this.foundationManager = {
                         name: '홍길동',
-                        phone: '02-1234-5678',
+                        phone: '02-2669-2700',
                         email: 'manager@sejong.or.kr',
                         role: '해외 문화인턴 담당'
                     };
@@ -259,7 +263,7 @@ const DashboardApp = {
             // 기본값 설정
             this.foundationManager = {
                 name: '홍길동',
-                phone: '02-1234-5678',
+                phone: '02-2669-2700',
                 email: 'manager@sejong.or.kr',
                 role: '해외 문화인턴 담당'
             };
@@ -450,7 +454,7 @@ const DashboardApp = {
 
     // 로그인 폼 초기화
     clearLoginForm() {
-        const inputs = ['instituteName', 'managerName', 'authCode'];
+        const inputs = ['instituteName', 'managerName'];
         inputs.forEach(id => {
             const input = document.getElementById(id);
             if (input) input.value = '';
