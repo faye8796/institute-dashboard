@@ -95,6 +95,15 @@
                                 <p class="card-text" id="foundationManager">-</p>
                             </div>
                         </div>
+                        <div class="summary-card">
+                            <div class="card-icon">
+                                <i data-lucide="file-text"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>지원서류</h3>
+                                <p class="card-number" id="totalDocuments">-</p>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- 재단 담당자 정보 -->
@@ -139,6 +148,10 @@
                                     <i data-lucide="printer"></i>
                                     인쇄하기
                                 </button>
+                                <button id="downloadAllBtn" class="btn primary">
+                                    <i data-lucide="download"></i>
+                                    전체 지원서류 다운로드
+                                </button>
                             </div>
                         </div>
                         <div class="interns-list" id="internsList">
@@ -172,6 +185,37 @@
         <div class="loading-spinner">
             <i data-lucide="loader"></i>
             <p>정보를 불러오고 있습니다...</p>
+        </div>
+    </div>
+
+    <!-- Document Modal -->
+    <div id="documentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>지원서류 다운로드</h3>
+                <button class="modal-close" id="closeModal">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>지원서류를 다운로드하시겠습니까?</p>
+                <div class="document-info">
+                    <div class="document-details">
+                        <strong id="modalStudentName">-</strong>의 지원서류
+                        <br>
+                        <small id="modalFileName">-</small>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="confirmDownload" class="btn primary">
+                    <i data-lucide="download"></i>
+                    다운로드
+                </button>
+                <button id="cancelDownload" class="btn secondary">
+                    취소
+                </button>
+            </div>
         </div>
     </div>
 
