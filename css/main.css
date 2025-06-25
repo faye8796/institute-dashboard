@@ -363,7 +363,7 @@ body {
 
 .interns-table th {
     padding: var(--space-lg) var(--space-md);
-    text-align: left;
+    text-align: center; /* 🎯 헤더 가운데 정렬 */
     font-weight: 700;
     color: var(--text-primary);
     font-size: 0.95rem;
@@ -385,13 +385,15 @@ body {
 
 .interns-table td {
     padding: var(--space-lg) var(--space-md);
-    vertical-align: top;
+    vertical-align: middle; /* 🎯 세로 가운데 정렬 */
+    text-align: center;     /* 🎯 가로 가운데 정렬 */
 }
 
 .intern-name {
     display: flex;
     flex-direction: column;
     gap: var(--space-xs);
+    align-items: center;    /* 🎯 이름 컬럼 가운데 정렬 */
 }
 
 .intern-name strong {
@@ -419,6 +421,7 @@ body {
 .document-actions {
     display: flex;
     align-items: center;
+    justify-content: center; /* 🎯 버튼 가운데 정렬 */
     gap: var(--space-sm);
 }
 
