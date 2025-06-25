@@ -369,7 +369,7 @@ const DashboardApp = {
             return;
         }
 
-        // 테이블 형태로 인턴 목록 생성
+        // 테이블 형태로 인턴 목록 생성 (🔄 application_original_name 사용)
         const tableHTML = `
             <div class="interns-table">
                 <table>
@@ -424,7 +424,7 @@ const DashboardApp = {
         }
     },
 
-    // 다운로드 모달 열기
+    // 다운로드 모달 열기 (🔄 application_original_name 사용)
     openDownloadModal(internId) {
         const intern = this.assignedInterns.find(i => i.id === internId);
         if (!intern || !intern.application_document_url) {
@@ -432,12 +432,23 @@ const DashboardApp = {
             return;
         }
 
+        // 📁 원본 파일명 우선 사용, 없으면 fallback
+        const originalFileName = intern.application_original_name || 
+                                intern.application_document_name || 
+                                `${intern.name}_지원서.pdf`;
+
         this.currentDocument = {
             internId: internId,
             internName: intern.name,
-            fileName: intern.application_document_name || `${intern.name}_지원서.pdf`,
+            fileName: originalFileName,  // 🎯 원본 파일명 사용
             url: intern.application_document_url
         };
+
+        console.log('📁 다운로드 파일 정보:', {
+            original: intern.application_original_name,
+            document: intern.application_document_name,
+            final: originalFileName
+        });
 
         // 모달 정보 업데이트
         const studentNameEl = document.getElementById('modalStudentName');
@@ -448,7 +459,7 @@ const DashboardApp = {
         }
 
         if (fileNameEl) {
-            fileNameEl.textContent = intern.application_document_name || `${intern.name}_지원서.pdf`;
+            fileNameEl.textContent = originalFileName;  // 🎯 원본 파일명 표시
         }
 
         // 모달 표시
@@ -480,9 +491,11 @@ const DashboardApp = {
         this.closeModal();
     },
 
-    // 개별 문서 다운로드
+    // 개별 문서 다운로드 (🔄 원본 파일명으로 다운로드)
     downloadDocument(url, fileName) {
         try {
+            console.log('📥 파일 다운로드 시작:', { url, fileName });
+            
             // 실제 환경에서는 실제 URL로 다운로드
             // 현재는 테스트용으로 알림 표시
             if (url.includes('example.com')) {
@@ -492,14 +505,16 @@ const DashboardApp = {
                 // 실제 파일 다운로드
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = fileName;
+                link.download = fileName;  // 🎯 원본 파일명으로 다운로드
                 link.target = '_blank';
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
+                
+                console.log('✅ 파일 다운로드 완료:', fileName);
             }
         } catch (error) {
-            console.error('다운로드 오류:', error);
+            console.error('❌ 다운로드 오류:', error);
             alert('파일 다운로드 중 오류가 발생했습니다.');
         }
     },
