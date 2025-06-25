@@ -37,9 +37,9 @@
                             <small class="form-help">예: 베트남 다낭 세종학당</small>
                         </div>
                         <div class="form-group">
-                            <label>담당자 이름</label>
-                            <input type="text" id="managerName" placeholder="담당자 이름을 입력하세요">
-                            <small class="form-help">예: 김다낭</small>
+                            <label>담당자 이메일</label>
+                            <input type="email" id="managerEmail" placeholder="담당자 이메일을 입력하세요">
+                            <small class="form-help">예: korea@ksif.or.kr</small>
                         </div>
                         <button id="managerLoginBtn" class="login-btn primary">
                             <i data-lucide="log-in"></i>
@@ -49,7 +49,7 @@
                         <!-- 간편 인증 안내 -->
                         <div class="auth-notice">
                             <i data-lucide="info"></i>
-                            <span>학당명과 담당자명만 입력하시면 접속됩니다</span>
+                            <span>학당명과 담당자 이메일만 입력하시면 접속됩니다</span>
                         </div>
                     </div>
                 </div>
@@ -64,7 +64,7 @@
                     <div class="header-content">
                         <div class="header-info">
                             <h1><span id="instituteNameDisplay">-</span> 담당자 대시보드</h1>
-                            <p>담당자: <span id="managerNameDisplay">-</span></p>
+                            <p>담당자: <span id="managerEmailDisplay">-</span></p>
                         </div>
                         <button id="logoutBtn" class="btn secondary">
                             <i data-lucide="log-out"></i>
@@ -170,7 +170,7 @@
                         <i data-lucide="alert-circle"></i>
                     </div>
                     <h2>접속 오류</h2>
-                    <p id="errorMessage">입력하신 정보가 올바르지 않습니다.<br>학당명과 담당자 이름을 다시 확인해주세요.</p>
+                    <p id="errorMessage">입력하신 정보가 올바르지 않습니다.<br>학당명과 담당자 이메일을 다시 확인해주세요.</p>
                     <button id="retryBtn" class="btn primary">
                         <i data-lucide="refresh-cw"></i>
                         다시 시도하기
