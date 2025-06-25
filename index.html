@@ -34,7 +34,7 @@
                         <div class="form-group">
                             <label>학당명</label>
                             <input type="text" id="instituteName" placeholder="학당명을 입력하세요">
-                            <small class="form-help">예: 베트남 다낭 세종학당</small>
+                            <small class="form-help">예: 다낭</small>
                         </div>
                         <div class="form-group">
                             <label>담당자 이메일</label>
@@ -63,7 +63,7 @@
                 <header class="dashboard-header">
                     <div class="header-content">
                         <div class="header-info">
-                            <h1><span id="instituteNameDisplay">-</span> 담당자 대시보드</h1>
+                            <h1><span id="instituteNameDisplay">-</span> 세종학당 대시보드</h1>
                             <p>담당자: <span id="managerEmailDisplay">-</span></p>
                         </div>
                         <button id="logoutBtn" class="btn secondary">
@@ -75,7 +75,7 @@
 
                 <!-- 메인 콘텐츠 -->
                 <main class="dashboard-main">
-                    <!-- 요약 카드 -->
+                    <!-- 요약 카드 (2개로 축소) -->
                     <div class="summary-cards">
                         <div class="summary-card">
                             <div class="card-icon">
@@ -92,49 +92,10 @@
                             </div>
                             <div class="card-content">
                                 <h3>재단 담당자</h3>
-                                <p class="card-text" id="foundationManager">-</p>
-                            </div>
-                        </div>
-                        <div class="summary-card">
-                            <div class="card-icon">
-                                <i data-lucide="file-text"></i>
-                            </div>
-                            <div class="card-content">
-                                <h3>지원서류</h3>
-                                <p class="card-number" id="totalDocuments">-</p>
+                                <p class="card-text" id="foundationManager">미정</p>
                             </div>
                         </div>
                     </div>
-
-                    <!-- 재단 담당자 정보 -->
-                    <section class="info-section">
-                        <div class="section-header">
-                            <h2>
-                                <i data-lucide="shield-check"></i>
-                                재단 담당자 정보
-                            </h2>
-                        </div>
-                        <div class="foundation-info" id="foundationInfo">
-                            <div class="info-card">
-                                <div class="info-row">
-                                    <label>이름:</label>
-                                    <span id="foundationManagerName">-</span>
-                                </div>
-                                <div class="info-row">
-                                    <label>연락처:</label>
-                                    <span id="foundationManagerPhone">-</span>
-                                </div>
-                                <div class="info-row">
-                                    <label>이메일:</label>
-                                    <span id="foundationManagerEmail">-</span>
-                                </div>
-                                <div class="info-row">
-                                    <label>담당 업무:</label>
-                                    <span id="foundationManagerRole">-</span>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
 
                     <!-- 배치된 인턴 목록 -->
                     <section class="info-section">
@@ -143,19 +104,9 @@
                                 <i data-lucide="graduation-cap"></i>
                                 배치된 문화인턴 목록
                             </h2>
-                            <div class="section-actions">
-                                <button id="printBtn" class="btn secondary">
-                                    <i data-lucide="printer"></i>
-                                    인쇄하기
-                                </button>
-                                <button id="downloadAllBtn" class="btn primary">
-                                    <i data-lucide="download"></i>
-                                    전체 지원서류 다운로드
-                                </button>
-                            </div>
                         </div>
-                        <div class="interns-list" id="internsList">
-                            <!-- 인턴 목록이 여기에 동적으로 추가됩니다 -->
+                        <div class="interns-table-container" id="internsTableContainer">
+                            <!-- 인턴 목록 테이블이 여기에 동적으로 추가됩니다 -->
                         </div>
                     </section>
                 </main>
