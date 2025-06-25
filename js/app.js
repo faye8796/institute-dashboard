@@ -196,12 +196,12 @@ const DashboardApp = {
                 throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
             }
 
-            // 1. institute_managers 테이블에서 조회 시도
+            // 1. institute_managers 테이블에서 조회 시도 (컬럼명: institute_name, mail)
             const { data, error } = await this.supabase
                 .from('institute_managers')
                 .select('*')
                 .eq('institute_name', instituteName)
-                .eq('email', managerEmail)
+                .eq('mail', managerEmail)  // 실제 컬럼명 'mail' 사용
                 .single();
 
             if (error) {
@@ -222,7 +222,7 @@ const DashboardApp = {
                     console.info('학당은 존재하지만 등록된 담당자가 없습니다. 임시 인증을 허용합니다.');
                     return {
                         institute_name: instituteName,
-                        email: managerEmail,
+                        mail: managerEmail,  // 'mail' 컬럼명 사용
                         manager_name: managerEmail.split('@')[0], // 이메일에서 이름 부분 추출
                         id: 'temp-' + Date.now()
                     };
@@ -239,7 +239,7 @@ const DashboardApp = {
                 console.warn('시스템 오류로 인한 임시 인증을 사용합니다.');
                 return {
                     institute_name: instituteName,
-                    email: managerEmail,
+                    mail: managerEmail,  // 'mail' 컬럼명 사용
                     manager_name: managerEmail.split('@')[0], // 이메일에서 이름 부분 추출
                     id: 'temp-' + Date.now()
                 };
@@ -352,7 +352,8 @@ const DashboardApp = {
         }
 
         if (managerEmailEl) {
-            managerEmailEl.textContent = this.currentManager.email || '-';
+            // mail 컬럼에서 데이터 가져오기
+            managerEmailEl.textContent = this.currentManager.mail || '-';
         }
     },
 
