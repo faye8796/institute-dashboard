@@ -59,7 +59,7 @@ const DashboardApp = {
         }
 
         // Enter 키 이벤트
-        const inputs = ['instituteName', 'managerName'];
+        const inputs = ['instituteName', 'managerEmail'];
         inputs.forEach(id => {
             const input = document.getElementById(id);
             if (input) {
@@ -129,7 +129,7 @@ const DashboardApp = {
     // 로그인 처리
     async handleLogin() {
         const instituteInput = document.getElementById('instituteName');
-        const managerInput = document.getElementById('managerName');
+        const managerInput = document.getElementById('managerEmail');
         const loginBtn = document.getElementById('managerLoginBtn');
 
         if (!instituteInput || !managerInput || !loginBtn) {
@@ -138,7 +138,7 @@ const DashboardApp = {
         }
 
         const instituteName = instituteInput.value.trim();
-        const managerName = managerInput.value.trim();
+        const managerEmail = managerInput.value.trim();
 
         // 입력 검증
         if (!instituteName) {
@@ -147,8 +147,16 @@ const DashboardApp = {
             return;
         }
 
-        if (!managerName) {
-            alert('담당자 이름을 입력해주세요.');
+        if (!managerEmail) {
+            alert('담당자 이메일을 입력해주세요.');
+            managerInput.focus();
+            return;
+        }
+
+        // 이메일 형식 검증
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(managerEmail)) {
+            alert('올바른 이메일 형식을 입력해주세요.');
             managerInput.focus();
             return;
         }
@@ -158,8 +166,8 @@ const DashboardApp = {
         loginBtn.disabled = true;
 
         try {
-            // 담당자 인증 (2단계 인증: 학당명 + 담당자명)
-            const manager = await this.authenticateManager(instituteName, managerName);
+            // 담당자 인증 (2단계 인증: 학당명 + 담당자 이메일)
+            const manager = await this.authenticateManager(instituteName, managerEmail);
             
             if (manager) {
                 this.currentManager = manager;
@@ -170,7 +178,7 @@ const DashboardApp = {
                 // 대시보드 표시
                 this.showDashboard();
             } else {
-                this.showError('입력하신 정보가 올바르지 않습니다.<br>학당명과 담당자 이름을 다시 확인해주세요.');
+                this.showError('입력하신 정보가 올바르지 않습니다.<br>학당명과 담당자 이메일을 다시 확인해주세요.');
             }
         } catch (error) {
             console.error('로그인 처리 중 오류:', error);
@@ -181,8 +189,8 @@ const DashboardApp = {
         }
     },
 
-    // 담당자 인증 (2단계 인증: 학당명 + 담당자명)
-    async authenticateManager(instituteName, managerName) {
+    // 담당자 인증 (2단계 인증: 학당명 + 담당자 이메일)
+    async authenticateManager(instituteName, managerEmail) {
         try {
             if (!this.supabase) {
                 throw new Error('Supabase 클라이언트가 초기화되지 않았습니다.');
@@ -193,7 +201,7 @@ const DashboardApp = {
                 .from('institute_managers')
                 .select('*')
                 .eq('institute_name', instituteName)
-                .eq('manager_name', managerName)
+                .eq('email', managerEmail)
                 .single();
 
             if (error) {
@@ -214,7 +222,8 @@ const DashboardApp = {
                     console.info('학당은 존재하지만 등록된 담당자가 없습니다. 임시 인증을 허용합니다.');
                     return {
                         institute_name: instituteName,
-                        manager_name: managerName,
+                        email: managerEmail,
+                        manager_name: managerEmail.split('@')[0], // 이메일에서 이름 부분 추출
                         id: 'temp-' + Date.now()
                     };
                 }
@@ -230,7 +239,8 @@ const DashboardApp = {
                 console.warn('시스템 오류로 인한 임시 인증을 사용합니다.');
                 return {
                     institute_name: instituteName,
-                    manager_name: managerName,
+                    email: managerEmail,
+                    manager_name: managerEmail.split('@')[0], // 이메일에서 이름 부분 추출
                     id: 'temp-' + Date.now()
                 };
             }
@@ -335,14 +345,14 @@ const DashboardApp = {
     // 헤더 정보 업데이트
     updateHeader() {
         const instituteNameEl = document.getElementById('instituteNameDisplay');
-        const managerNameEl = document.getElementById('managerNameDisplay');
+        const managerEmailEl = document.getElementById('managerEmailDisplay');
 
         if (instituteNameEl) {
             instituteNameEl.textContent = this.currentManager.institute_name || '-';
         }
 
-        if (managerNameEl) {
-            managerNameEl.textContent = this.currentManager.manager_name || '-';
+        if (managerEmailEl) {
+            managerEmailEl.textContent = this.currentManager.email || '-';
         }
     },
 
@@ -621,7 +631,7 @@ const DashboardApp = {
 
     // 로그인 폼 초기화
     clearLoginForm() {
-        const inputs = ['instituteName', 'managerName'];
+        const inputs = ['instituteName', 'managerEmail'];
         inputs.forEach(id => {
             const input = document.getElementById(id);
             if (input) input.value = '';
