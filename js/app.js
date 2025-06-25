@@ -491,8 +491,8 @@ const DashboardApp = {
         this.closeModal();
     },
 
-    // 개별 문서 다운로드 (🔄 원본 파일명으로 다운로드)
-    downloadDocument(url, fileName) {
+    // 🚀 개별 문서 다운로드 (강제 다운로드 시스템)
+    async downloadDocument(url, fileName) {
         try {
             console.log('📥 파일 다운로드 시작:', { url, fileName });
             
@@ -501,21 +501,67 @@ const DashboardApp = {
             if (url.includes('example.com')) {
                 alert(`실제 환경에서는 "${fileName}" 파일이 다운로드됩니다.\n\n테스트 URL: ${url}`);
                 console.log('다운로드 시뮬레이션:', { url, fileName });
-            } else {
-                // 실제 파일 다운로드
+                return;
+            }
+
+            // 🔥 강제 다운로드 시스템 (Blob 방식)
+            try {
+                // 로딩 표시
+                this.showLoading(true);
+                
+                console.log('🔄 파일 가져오는 중...');
+                
+                // fetch로 파일 가져오기
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP 오류: ${response.status}`);
+                }
+                
+                // blob으로 변환
+                const blob = await response.blob();
+                console.log('✅ Blob 생성 완료:', blob.size, 'bytes');
+                
+                // blob URL 생성
+                const blobUrl = window.URL.createObjectURL(blob);
+                
+                // 강제 다운로드 링크 생성
+                const downloadLink = document.createElement('a');
+                downloadLink.href = blobUrl;
+                downloadLink.download = fileName;  // 🎯 원본 파일명으로 다운로드
+                downloadLink.style.display = 'none';
+                
+                // DOM에 추가하고 클릭
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                
+                // 정리
+                document.body.removeChild(downloadLink);
+                window.URL.revokeObjectURL(blobUrl);
+                
+                console.log('✅ 파일 다운로드 완료:', fileName);
+                
+            } catch (fetchError) {
+                console.warn('⚠️ Blob 다운로드 실패, 기본 방식으로 시도:', fetchError);
+                
+                // fallback: 기본 방식 (target 없이)
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = fileName;  // 🎯 원본 파일명으로 다운로드
-                link.target = '_blank';
+                link.download = fileName;
+                // ❌ target='_blank' 제거 (새 탭에서 열리지 않도록)
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
                 
-                console.log('✅ 파일 다운로드 완료:', fileName);
+                console.log('✅ 기본 방식 다운로드 시도 완료:', fileName);
             }
+            
         } catch (error) {
             console.error('❌ 다운로드 오류:', error);
             alert('파일 다운로드 중 오류가 발생했습니다.');
+        } finally {
+            // 로딩 숨김
+            this.showLoading(false);
         }
     },
 
