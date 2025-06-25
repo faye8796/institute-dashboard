@@ -195,15 +195,19 @@ const DashboardApp = {
             if (error) {
                 if (error.code === 'PGRST116') {
                     // 데이터가 없는 경우, user_profiles에서 해당 학당이 있는지 확인
-                    const { data: instituteCheck, error: checkError } = await this.supabase
-                        .from('user_profiles')
-                        .select('sejong_institute')
-                        .eq('sejong_institute', instituteName)
-                        .limit(1);
+                    // InstituteMatcher 모듈을 사용해서 매핑된 학당명으로 확인
+                    if (typeof InstituteMatcher !== 'undefined') {
+                        const fullInstituteName = InstituteMatcher.getFullInstituteName(instituteName);
+                        const { data: instituteCheck, error: checkError } = await this.supabase
+                            .from('user_profiles')
+                            .select('sejong_institute')
+                            .eq('sejong_institute', fullInstituteName)
+                            .limit(1);
 
-                    if (checkError || !instituteCheck || instituteCheck.length === 0) {
-                        console.warn('존재하지 않는 학당입니다:', instituteName);
-                        return null;
+                        if (checkError || !instituteCheck || instituteCheck.length === 0) {
+                            console.warn('존재하지 않는 학당입니다:', instituteName);
+                            return null;
+                        }
                     }
 
                     // 학당은 존재하지만 등록된 담당자가 없는 경우 임시 인증 허용
@@ -240,7 +244,7 @@ const DashboardApp = {
     // 대시보드 데이터 로드
     async loadDashboardData() {
         try {
-            // 배치된 인턴 목록 조회
+            // 배치된 인턴 목록 조회 (새로운 매칭 시스템 사용)
             await this.loadAssignedInterns();
             
             // 재단 담당자 정보 설정 (기본값)
@@ -252,23 +256,37 @@ const DashboardApp = {
         }
     },
 
-    // 배치된 인턴 목록 조회 (지원서류 정보 포함)
+    // 배치된 인턴 목록 조회 (🆕 InstituteMatcher 모듈 사용)
     async loadAssignedInterns() {
         try {
-            const { data, error } = await this.supabase
-                .from('user_profiles')
-                .select('*')
-                .eq('sejong_institute', this.currentManager.institute_name)
-                .eq('user_type', 'student');
+            console.log('🔍 배치된 인턴 조회 시작:', this.currentManager.institute_name);
+            
+            // InstituteMatcher 모듈이 로드되었는지 확인
+            if (typeof InstituteMatcher === 'undefined') {
+                console.warn('⚠️ InstituteMatcher 모듈이 로드되지 않았습니다. 기존 방식 사용.');
+                
+                // 기존 방식 fallback
+                const { data, error } = await this.supabase
+                    .from('user_profiles')
+                    .select('*')
+                    .eq('sejong_institute', this.currentManager.institute_name)
+                    .eq('user_type', 'student');
 
-            if (error) {
-                throw error;
+                if (error) throw error;
+                this.assignedInterns = data || [];
+                
+            } else {
+                // 🆕 새로운 매칭 시스템 사용
+                this.assignedInterns = await InstituteMatcher.getStudentsWithFallback(
+                    this.supabase,
+                    this.currentManager.institute_name
+                );
             }
-
-            this.assignedInterns = data || [];
-            console.log('배치된 인턴 목록:', this.assignedInterns);
+            
+            console.log(`✅ 배치된 인턴 목록 로드 완료: ${this.assignedInterns.length}명`);
+            
         } catch (error) {
-            console.error('인턴 목록 조회 오류:', error);
+            console.error('❌ 인턴 목록 조회 오류:', error);
             this.assignedInterns = [];
         }
     },
@@ -592,6 +610,11 @@ const DashboardApp = {
                 supabaseConnected: !!this.supabase,
                 config: CONFIG
             });
+            
+            // InstituteMatcher 디버그 정보도 출력
+            if (typeof InstituteMatcher !== 'undefined') {
+                InstituteMatcher.debug();
+            }
         }
     }
 };
