@@ -81,18 +81,6 @@ const DashboardApp = {
             retryBtn.addEventListener('click', () => this.goBack());
         }
 
-        // 인쇄 버튼
-        const printBtn = document.getElementById('printBtn');
-        if (printBtn) {
-            printBtn.addEventListener('click', () => this.printPage());
-        }
-
-        // 전체 지원서류 다운로드 버튼
-        const downloadAllBtn = document.getElementById('downloadAllBtn');
-        if (downloadAllBtn) {
-            downloadAllBtn.addEventListener('click', () => this.downloadAllDocuments());
-        }
-
         // 모달 관련 이벤트
         this.setupModalEvents();
     },
@@ -255,8 +243,8 @@ const DashboardApp = {
             // 배치된 인턴 목록 조회
             await this.loadAssignedInterns();
             
-            // 재단 담당자 정보 조회
-            await this.loadFoundationManager();
+            // 재단 담당자 정보 설정 (기본값)
+            this.setDefaultFoundationManager();
             
         } catch (error) {
             console.error('대시보드 데이터 로드 오류:', error);
@@ -285,40 +273,14 @@ const DashboardApp = {
         }
     },
 
-    // 재단 담당자 정보 조회
-    async loadFoundationManager() {
-        try {
-            const { data, error } = await this.supabase
-                .from('foundation_managers')
-                .select('*')
-                .eq('institute_name', this.currentManager.institute_name)
-                .single();
-
-            if (error) {
-                if (error.code === 'PGRST116') {
-                    // 데이터가 없는 경우 기본값 설정
-                    this.foundationManager = {
-                        name: '홍길동',
-                        phone: '02-2669-2700',
-                        email: 'manager@sejong.or.kr',
-                        role: '해외 문화인턴 담당'
-                    };
-                    return;
-                }
-                throw error;
-            }
-
-            this.foundationManager = data;
-        } catch (error) {
-            console.error('재단 담당자 정보 조회 오류:', error);
-            // 기본값 설정
-            this.foundationManager = {
-                name: '홍길동',
-                phone: '02-2669-2700',
-                email: 'manager@sejong.or.kr',
-                role: '해외 문화인턴 담당'
-            };
-        }
+    // 재단 담당자 기본값 설정
+    setDefaultFoundationManager() {
+        this.foundationManager = {
+            name: '미정',
+            phone: '02-2669-2700',
+            email: 'manager@sejong.or.kr',
+            role: '해외 문화인턴 담당'
+        };
     },
 
     // 대시보드 표시
@@ -329,11 +291,8 @@ const DashboardApp = {
         // 요약 카드 업데이트
         this.updateSummaryCards();
         
-        // 재단 담당자 정보 업데이트
-        this.updateFoundationInfo();
-        
-        // 인턴 목록 업데이트
-        this.updateInternsList();
+        // 인턴 목록 테이블 업데이트
+        this.updateInternsTable();
         
         // 대시보드 페이지 표시
         this.showPage('dashboardPage');
@@ -361,47 +320,24 @@ const DashboardApp = {
     updateSummaryCards() {
         const totalInternsEl = document.getElementById('totalInterns');
         const foundationManagerEl = document.getElementById('foundationManager');
-        const totalDocumentsEl = document.getElementById('totalDocuments');
 
         if (totalInternsEl) {
             totalInternsEl.textContent = this.assignedInterns.length;
         }
 
         if (foundationManagerEl) {
-            foundationManagerEl.textContent = this.foundationManager?.name || '-';
-        }
-
-        if (totalDocumentsEl) {
-            const documentsCount = this.assignedInterns.filter(intern => intern.application_document_url).length;
-            totalDocumentsEl.textContent = documentsCount;
+            foundationManagerEl.textContent = this.foundationManager?.name || '미정';
         }
     },
 
-    // 재단 담당자 정보 업데이트
-    updateFoundationInfo() {
-        const elements = {
-            foundationManagerName: this.foundationManager?.name || '-',
-            foundationManagerPhone: this.foundationManager?.phone || '-',
-            foundationManagerEmail: this.foundationManager?.email || '-',
-            foundationManagerRole: this.foundationManager?.role || '-'
-        };
-
-        Object.entries(elements).forEach(([id, value]) => {
-            const element = document.getElementById(id);
-            if (element) {
-                element.textContent = value;
-            }
-        });
-    },
-
-    // 인턴 목록 업데이트 (지원서류 다운로드 버튼 포함)
-    updateInternsList() {
-        const internsListEl = document.getElementById('internsList');
+    // 인턴 목록 테이블 업데이트
+    updateInternsTable() {
+        const internsTableEl = document.getElementById('internsTableContainer');
         
-        if (!internsListEl) return;
+        if (!internsTableEl) return;
 
         if (this.assignedInterns.length === 0) {
-            internsListEl.innerHTML = `
+            internsTableEl.innerHTML = `
                 <div class="empty-state">
                     <i data-lucide="users"></i>
                     <h3>배치된 인턴이 없습니다</h3>
@@ -415,51 +351,54 @@ const DashboardApp = {
             return;
         }
 
-        const internsHTML = this.assignedInterns.map(intern => `
-            <div class="intern-card">
-                <div class="intern-header">
-                    <div class="intern-name">${intern.name || '-'}</div>
-                    <div class="intern-field">${intern.field || '전문분야'}</div>
-                    ${intern.application_document_url ? `
-                        <button class="download-btn" onclick="DashboardApp.openDownloadModal('${intern.id}')">
-                            <i data-lucide="download"></i>
-                            지원서류
-                        </button>
-                    ` : `
-                        <span class="no-document">
-                            <i data-lucide="file-x"></i>
-                            지원서류 없음
-                        </span>
-                    `}
-                </div>
-                <div class="intern-details">
-                    <div class="detail-item">
-                        <i data-lucide="calendar"></i>
-                        <span>생년월일: ${this.formatDate(intern.birth_date) || '-'}</span>
-                    </div>
-                    <div class="detail-item">
-                        <i data-lucide="map-pin"></i>
-                        <span>배치 학당: ${intern.sejong_institute || '-'}</span>
-                    </div>
-                    <div class="detail-item">
-                        <i data-lucide="book-open"></i>
-                        <span>전문 분야: ${intern.field || '-'}</span>
-                    </div>
-                    <div class="detail-item">
-                        <i data-lucide="user-check"></i>
-                        <span>상태: 배치 완료</span>
-                    </div>
-                    ${intern.application_submitted_at ? `
-                        <div class="detail-item">
-                            <i data-lucide="file-text"></i>
-                            <span>지원서 제출일: ${this.formatDate(intern.application_submitted_at)}</span>
-                        </div>
-                    ` : ''}
-                </div>
+        // 테이블 형태로 인턴 목록 생성
+        const tableHTML = `
+            <div class="interns-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>성명</th>
+                            <th>전공분야</th>
+                            <th>지원서 정보</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${this.assignedInterns.map(intern => `
+                            <tr>
+                                <td>
+                                    <div class="intern-name">
+                                        <strong>${intern.name || '-'}</strong>
+                                        <small>${this.formatDate(intern.birth_date) || '-'}</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="intern-field">
+                                        ${intern.field || '미정'}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="document-actions">
+                                        ${intern.application_document_url ? `
+                                            <button class="download-btn primary" onclick="DashboardApp.openDownloadModal('${intern.id}')">
+                                                <i data-lucide="download"></i>
+                                                지원서 다운로드
+                                            </button>
+                                        ` : `
+                                            <span class="no-document">
+                                                <i data-lucide="file-x"></i>
+                                                지원서 없음
+                                            </span>
+                                        `}
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
             </div>
-        `).join('');
+        `;
 
-        internsListEl.innerHTML = internsHTML;
+        internsTableEl.innerHTML = tableHTML;
         
         // 아이콘 재초기화
         if (typeof lucide !== 'undefined') {
@@ -547,27 +486,6 @@ const DashboardApp = {
         }
     },
 
-    // 전체 지원서류 다운로드
-    downloadAllDocuments() {
-        const documentsWithFiles = this.assignedInterns.filter(intern => intern.application_document_url);
-        
-        if (documentsWithFiles.length === 0) {
-            alert('다운로드할 지원서류가 없습니다.');
-            return;
-        }
-
-        const confirmDownload = confirm(`총 ${documentsWithFiles.length}개의 지원서류를 다운로드하시겠습니까?`);
-        
-        if (confirmDownload) {
-            documentsWithFiles.forEach((intern, index) => {
-                setTimeout(() => {
-                    const fileName = intern.application_document_name || `${intern.name}_지원서.pdf`;
-                    this.downloadDocument(intern.application_document_url, fileName);
-                }, index * 1000); // 1초 간격으로 다운로드
-            });
-        }
-    },
-
     // 로그아웃 처리
     handleLogout() {
         this.currentManager = null;
@@ -649,11 +567,6 @@ const DashboardApp = {
                 loadingOverlay.classList.remove('show');
             }
         }
-    },
-
-    // 인쇄 기능
-    printPage() {
-        window.print();
     },
 
     // 유틸리티: 날짜 포맷팅
