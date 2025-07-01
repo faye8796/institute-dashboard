@@ -112,6 +112,57 @@ const InstituteMatcher = {
     },
 
     /**
+     * 🆕 학당별 배정된 학생 목록 조회 (추가 정보 포함)
+     * @param {object} supabaseClient - Supabase 클라이언트 인스턴스
+     * @param {string} shortInstituteName - 간단한 학당명
+     * @returns {Promise<Array>} 배정된 학생 목록 (성별, 전공, 강의 가능 분야 포함)
+     */
+    async getAssignedStudentsWithAdditionalInfo(supabaseClient, shortInstituteName) {
+        try {
+            // 1. 간단한 학당명을 상세한 학당명으로 변환
+            const fullInstituteName = this.getFullInstituteName(shortInstituteName);
+            
+            console.log(`🔍 학생 조회 (추가 정보 포함) 시작: "${shortInstituteName}" → "${fullInstituteName}"`);
+            
+            // 2. user_profiles와 student_additional_info 조인 조회
+            const { data, error } = await supabaseClient
+                .from('user_profiles')
+                .select(`
+                    *,
+                    student_additional_info(
+                        gender,
+                        major,
+                        teaching_fields
+                    )
+                `)
+                .eq('sejong_institute', fullInstituteName)
+                .eq('user_type', 'student')
+                .order('name', { ascending: true }); // 이름순 정렬
+            
+            if (error) {
+                console.error('❌ Supabase 조회 오류 (추가 정보 포함):', error);
+                throw error;
+            }
+            
+            // 3. 데이터 구조 정규화
+            const students = (data || []).map(student => ({
+                ...student,
+                gender: student.student_additional_info?.[0]?.gender || '미정',
+                major: student.student_additional_info?.[0]?.major || [],
+                teaching_fields: student.student_additional_info?.[0]?.teaching_fields || []
+            }));
+            
+            console.log(`✅ 학생 조회 (추가 정보 포함) 완료: ${students.length}명 찾음`);
+            
+            return students;
+            
+        } catch (error) {
+            console.error('❌ 학생 목록 조회 실패 (추가 정보 포함):', error);
+            return [];
+        }
+    },
+
+    /**
      * 부분 문자열 검색으로 학당 매칭 (fallback 방식)
      * 매핑 테이블에 없는 경우 부분 문자열로 검색
      * @param {object} supabaseClient - Supabase 클라이언트 인스턴스
@@ -147,6 +198,54 @@ const InstituteMatcher = {
     },
 
     /**
+     * 🆕 부분 문자열 검색으로 학당 매칭 (추가 정보 포함)
+     * @param {object} supabaseClient - Supabase 클라이언트 인스턴스
+     * @param {string} shortInstituteName - 간단한 학당명
+     * @returns {Promise<Array>} 배정된 학생 목록 (성별, 전공, 강의 가능 분야 포함)
+     */
+    async getAssignedStudentsByPartialMatchWithAdditionalInfo(supabaseClient, shortInstituteName) {
+        try {
+            console.log(`🔍 부분 문자열 검색 (추가 정보 포함): "${shortInstituteName}"`);
+            
+            // ilike를 사용한 부분 문자열 검색 + 조인
+            const { data, error } = await supabaseClient
+                .from('user_profiles')
+                .select(`
+                    *,
+                    student_additional_info(
+                        gender,
+                        major,
+                        teaching_fields
+                    )
+                `)
+                .ilike('sejong_institute', `%${shortInstituteName}%`)
+                .eq('user_type', 'student')
+                .order('name', { ascending: true });
+            
+            if (error) {
+                console.error('❌ 부분 검색 오류 (추가 정보 포함):', error);
+                throw error;
+            }
+            
+            // 데이터 구조 정규화
+            const students = (data || []).map(student => ({
+                ...student,
+                gender: student.student_additional_info?.[0]?.gender || '미정',
+                major: student.student_additional_info?.[0]?.major || [],
+                teaching_fields: student.student_additional_info?.[0]?.teaching_fields || []
+            }));
+            
+            console.log(`✅ 부분 검색 (추가 정보 포함) 완료: ${students.length}명 찾음`);
+            
+            return students;
+            
+        } catch (error) {
+            console.error('❌ 부분 검색 실패 (추가 정보 포함):', error);
+            return [];
+        }
+    },
+
+    /**
      * 통합 학생 조회 함수 (매핑 + fallback)
      * @param {object} supabaseClient - Supabase 클라이언트 인스턴스
      * @param {string} shortInstituteName - 간단한 학당명
@@ -168,6 +267,32 @@ const InstituteMatcher = {
             
         } catch (error) {
             console.error('❌ 통합 조회 실패:', error);
+            return [];
+        }
+    },
+
+    /**
+     * 🆕 통합 학생 조회 함수 (추가 정보 포함, 매핑 + fallback)
+     * @param {object} supabaseClient - Supabase 클라이언트 인스턴스
+     * @param {string} shortInstituteName - 간단한 학당명
+     * @returns {Promise<Array>} 배정된 학생 목록 (성별, 전공, 강의 가능 분야 포함)
+     */
+    async getStudentsWithAdditionalInfo(supabaseClient, shortInstituteName) {
+        try {
+            // 1차: 매핑 테이블 사용 (추가 정보 포함)
+            let students = await this.getAssignedStudentsWithAdditionalInfo(supabaseClient, shortInstituteName);
+            
+            // 2차: 결과가 없으면 부분 문자열 검색 (추가 정보 포함)
+            if (students.length === 0) {
+                console.log(`📋 매핑 결과 없음. 부분 검색 시도... (추가 정보 포함)`);
+                students = await this.getAssignedStudentsByPartialMatchWithAdditionalInfo(supabaseClient, shortInstituteName);
+            }
+            
+            console.log(`🎯 최종 결과 (추가 정보 포함): ${students.length}명의 학생 찾음`);
+            return students;
+            
+        } catch (error) {
+            console.error('❌ 통합 조회 실패 (추가 정보 포함):', error);
             return [];
         }
     },
