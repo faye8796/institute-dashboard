@@ -15,6 +15,118 @@ const DashboardApp = {
     // 현재 다운로드 대상 문서 정보
     currentDocument: null,
 
+    // 🆕 42개 학당 매핑 테이블 (InstituteMatcher 불가용 시 사용)
+    instituteMapping: {
+        // 🇻🇳 베트남 지역 (5개)
+        '다낭': '베트남 다낭 세종학당',
+        '후에': '베트남 후에 세종학당',
+        '빈즈엉': '베트남 빈즈엉 세종학당',
+        '껀터1': '베트남 껀터1 세종학당',
+        '달랏': '베트남 달랏 세종학당',
+        
+        // 🇺🇿 우즈베키스탄 지역 (4개)
+        '부하라': '우즈베키스탄 부하라 세종학당',
+        '나망간': '우즈베키스탄 나망간 세종학당',
+        '안디잔': '우즈베키스탄 안디잔 세종학당',
+        '지자흐': '우즈베키스탄 지자흐 세종학당',
+        
+        // 🇰🇬 키르기스스탄 지역 (2개)
+        '비슈케크': '키르기스스탄 비슈케크 세종학당',
+        '소쿨루크': '키르기스스탄 소쿨루크 세종학당',
+        
+        // 🇱🇹 리투아니아 지역 (2개)
+        '빌뉴스': '리투아니아 빌뉴스 세종학당',
+        '카우나스': '리투아니아 카우나스 세종학당',
+        
+        // 🇮🇩 인도네시아 지역 (3개)
+        '반둥1': '인도네시아 반둥1 세종학당',
+        '수라바야': '인도네시아 수라바야 세종학당',
+        '탕으랑': '인도네시아 탕으랑 세종학당',
+        
+        // 🇮🇳 인도 지역 (2개)
+        '벵갈루루': '인도 벵갈루루 세종학당',
+        '주인도한국문화원': '인도 주인도한국문화원 세종학당',
+        
+        // 🇨🇳 중국 지역 (2개)
+        '청두1': '중국 청두1 세종학당',
+        '타이중': '중국 타이중 세종학당',
+        
+        // 🇰🇭 캄보디아 지역 (2개)
+        '시엠레아프': '캄보디아 시엠레아프 세종학당',
+        '프놈펜1': '캄보디아 프놈펜1 세종학당',
+        
+        // 🇸🇦 사우디아라비아 지역 (1개)
+        '리야드': '사우디아라비아 리야드 세종학당',
+        
+        // 🇰🇪 케냐 지역 (1개)
+        '나이로비': '케냐 나이로비 세종학당',
+        
+        // 🇨🇿 체코 지역 (1개)
+        '올로모우츠': '체코 올로모우츠 세종학당',
+        
+        // 🇨🇦 캐나다 지역 (1개)
+        '몬트리올': '캐나다 몬트리올 세종학당',
+        
+        // 🇺🇸 미국 지역 (1개)
+        '샌안토니오': '미국 샌안토니오 세종학당',
+        
+        // 🇬🇧 영국 지역 (1개)
+        '런던': '영국 런던 세종학당',
+        
+        // 🇵🇱 폴란드 지역 (1개)
+        '카토비체': '폴란드 카토비체 세종학당',
+        
+        // 🇹🇭 태국 지역 (1개)
+        '마하사라캄': '태국 마하사라캄 세종학당',
+        
+        // 🇱🇦 라오스 지역 (1개)
+        '폰사반': '라오스 폰사반 세종학당',
+        
+        // 🇷🇴 루마니아 지역 (1개)
+        '부쿠레슈티': '루마니아 부쿠레슈티 세종학당',
+        
+        // 🇸🇪 스웨덴 지역 (1개)
+        '예테보리': '스웨덴 예테보리 세종학당',
+        
+        // 🇸🇿 에스와티니 지역 (1개)
+        '음바바네': '에스와티니 음바바네 세종학당',
+        
+        // 🇪🇪 에스토니아 지역 (1개)
+        '탈린': '에스토니아 탈린 세종학당',
+        
+        // 🇺🇾 우루과이 지역 (1개)
+        '몬테비데오': '우루과이 몬테비데오 세종학당',
+        
+        // 🇭🇷 크로아티아 지역 (1개)
+        '리예카': '크로아티아 리예카 세종학당',
+        
+        // 🇭🇺 헝가리 지역 (1개)
+        '부다페스트': '헝가리 부다페스트 세종학당',
+        
+        // 🇨🇴 콜롬비아 지역 (1개)
+        '보고타': '콜롬비아 보고타 세종학당',
+        
+        // 🏢 한국문화원 (3개)
+        '주독일한국문화원': '독일 주독일한국문화원 세종학당',
+        '주이집트한국문화원': '이집트 주이집트한국문화원 세종학당',
+        '주필리핀한국문화원': '필리핀 주필리핀한국문화원 세종학당',
+        
+        // 🧪 테스트용
+        '테스트학당': '테스트학당'
+    },
+
+    // 🆕 매핑 변환 유틸리티 함수
+    getFullInstituteName(shortName) {
+        const fullName = this.instituteMapping[shortName];
+        if (fullName) {
+            console.log(`✅ 직접 매핑 성공: "${shortName}" → "${fullName}"`);
+            return fullName;
+        }
+        
+        console.warn(`⚠️ 직접 매핑 실패: "${shortName}"`);
+        return shortName; // fallback으로 원본 반환
+    },
+
     // 초기화
     async init() {
         console.log('🚀 Dashboard App 초기화 중...');
@@ -195,19 +307,17 @@ const DashboardApp = {
             if (error) {
                 if (error.code === 'PGRST116') {
                     // 데이터가 없는 경우, user_profiles에서 해당 학당이 있는지 확인
-                    // InstituteMatcher 모듈을 사용해서 매핑된 학당명으로 확인
-                    if (typeof InstituteMatcher !== 'undefined') {
-                        const fullInstituteName = InstituteMatcher.getFullInstituteName(instituteName);
-                        const { data: instituteCheck, error: checkError } = await this.supabase
-                            .from('user_profiles')
-                            .select('sejong_institute')
-                            .eq('sejong_institute', fullInstituteName)
-                            .limit(1);
+                    // 매핑된 학당명으로 확인
+                    const fullInstituteName = this.getFullInstituteName(instituteName);
+                    const { data: instituteCheck, error: checkError } = await this.supabase
+                        .from('user_profiles')
+                        .select('sejong_institute')
+                        .eq('sejong_institute', fullInstituteName)
+                        .limit(1);
 
-                        if (checkError || !instituteCheck || instituteCheck.length === 0) {
-                            console.warn('존재하지 않는 학당입니다:', instituteName);
-                            return null;
-                        }
+                    if (checkError || !instituteCheck || instituteCheck.length === 0) {
+                        console.warn('존재하지 않는 학당입니다:', instituteName);
+                        return null;
                     }
 
                     // 학당은 존재하지만 등록된 담당자가 없는 경우 임시 인증 허용
@@ -256,17 +366,31 @@ const DashboardApp = {
         }
     },
 
-    // 배치된 인턴 목록 조회 (🆕 학생 추가 정보 포함)
+    // 🔧 배치된 인턴 목록 조회 (완전 수정됨 - 42개 학당 매핑 지원)
     async loadAssignedInterns() {
         try {
             console.log('🔍 배치된 인턴 조회 시작:', this.currentManager.institute_name);
             
-            // InstituteMatcher 모듈이 로드되었는지 확인
-            if (typeof InstituteMatcher === 'undefined') {
-                console.warn('⚠️ InstituteMatcher 모듈이 로드되지 않았습니다. 기존 방식 사용.');
+            // 💡 InstituteMatcher 모듈 사용 가능한 경우 우선 사용
+            if (typeof InstituteMatcher !== 'undefined') {
+                console.log('✅ InstituteMatcher 모듈 사용 - 추가 정보 포함');
+                this.assignedInterns = await InstituteMatcher.getStudentsWithAdditionalInfo(
+                    this.supabase,
+                    this.currentManager.institute_name
+                );
+            } else {
+                console.warn('⚠️ InstituteMatcher 모듈 없음 - 자체 매핑 시스템 사용');
                 
-                // 🆕 기존 방식 fallback - student_additional_info 조인 추가
-                const { data, error } = await this.supabase
+                // 🆕 1차: 직접 매핑 변환 시도
+                const fullInstituteName = this.getFullInstituteName(this.currentManager.institute_name);
+                
+                let data = null;
+                let error = null;
+                
+                // 🆕 매핑된 학당명으로 조회 시도
+                console.log(`🎯 매핑된 학당명으로 조회: "${this.currentManager.institute_name}" → "${fullInstituteName}"`);
+                
+                const result = await this.supabase
                     .from('user_profiles')
                     .select(`
                         *,
@@ -276,28 +400,56 @@ const DashboardApp = {
                             teaching_fields
                         )
                     `)
-                    .eq('sejong_institute', this.currentManager.institute_name)
+                    .eq('sejong_institute', fullInstituteName)
                     .eq('user_type', 'student');
+
+                data = result.data;
+                error = result.error;
+
+                // 🆕 2차: 매핑 결과가 없으면 부분 문자열 검색 시도
+                if (!error && (!data || data.length === 0)) {
+                    console.log(`📋 매핑 결과 없음. 부분 검색 시도: "${this.currentManager.institute_name}"`);
+                    
+                    const partialResult = await this.supabase
+                        .from('user_profiles')
+                        .select(`
+                            *,
+                            student_additional_info(
+                                gender,
+                                major,
+                                teaching_fields
+                            )
+                        `)
+                        .ilike('sejong_institute', `%${this.currentManager.institute_name}%`)
+                        .eq('user_type', 'student');
+
+                    data = partialResult.data;
+                    error = partialResult.error;
+                }
 
                 if (error) throw error;
                 
-                // 데이터 구조 정규화
+                // 🆕 데이터 구조 정규화 (매핑과 동일한 형태)
                 this.assignedInterns = (data || []).map(intern => ({
                     ...intern,
                     gender: intern.student_additional_info?.[0]?.gender || '미정',
                     major: intern.student_additional_info?.[0]?.major || [],
                     teaching_fields: intern.student_additional_info?.[0]?.teaching_fields || []
                 }));
-                
-            } else {
-                // 🆕 새로운 매칭 시스템 사용 - 추가 정보 포함 버전
-                this.assignedInterns = await InstituteMatcher.getStudentsWithAdditionalInfo(
-                    this.supabase,
-                    this.currentManager.institute_name
-                );
             }
             
             console.log(`✅ 배치된 인턴 목록 로드 완료: ${this.assignedInterns.length}명`);
+            
+            // 🔍 디버그: 첫 번째 학생 정보 확인
+            if (this.assignedInterns.length > 0) {
+                const firstStudent = this.assignedInterns[0];
+                console.log('🧑‍🎓 첫 번째 학생 정보:', {
+                    name: firstStudent.name,
+                    gender: firstStudent.gender,
+                    major: firstStudent.major,
+                    teaching_fields: firstStudent.teaching_fields
+                });
+            }
             
         } catch (error) {
             console.error('❌ 인턴 목록 조회 오류:', error);
@@ -704,12 +856,15 @@ const DashboardApp = {
                 foundationManager: this.foundationManager,
                 currentDocument: this.currentDocument,
                 supabaseConnected: !!this.supabase,
+                mappingTableCount: Object.keys(this.instituteMapping).length,
                 config: CONFIG
             });
             
             // InstituteMatcher 디버그 정보도 출력
             if (typeof InstituteMatcher !== 'undefined') {
                 InstituteMatcher.debug();
+            } else {
+                console.log('🗺️ 자체 매핑 테이블 사용 중:', Object.keys(this.instituteMapping).length, '개 학당');
             }
         }
     }
