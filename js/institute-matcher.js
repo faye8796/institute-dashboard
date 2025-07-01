@@ -148,6 +148,56 @@ const InstituteMatcher = {
     },
 
     /**
+     * 🔧 강화된 데이터 구조 분석 함수
+     * @param {any} additionalInfo - student_additional_info 데이터
+     * @param {string} studentName - 학생 이름 (디버깅용)
+     * @returns {object} 정규화된 추가 정보
+     */
+    analyzeAdditionalInfo(additionalInfo, studentName = 'Unknown') {
+        console.log(`🔍 [${studentName}] 추가 정보 분석 시작:`, additionalInfo);
+        
+        // Case 1: undefined 또는 null
+        if (!additionalInfo) {
+            console.warn(`⚠️ [${studentName}] 추가 정보가 없습니다 (undefined/null)`);
+            return { gender: '미정', major: [], teaching_fields: [] };
+        }
+        
+        // Case 2: 배열 형태
+        if (Array.isArray(additionalInfo)) {
+            console.log(`📋 [${studentName}] 배열 형태 (길이: ${additionalInfo.length})`);
+            
+            if (additionalInfo.length === 0) {
+                console.warn(`⚠️ [${studentName}] 빈 배열입니다`);
+                return { gender: '미정', major: [], teaching_fields: [] };
+            }
+            
+            const firstItem = additionalInfo[0];
+            console.log(`🎯 [${studentName}] 배열 첫 번째 요소:`, firstItem);
+            
+            return {
+                gender: firstItem?.gender || '미정',
+                major: firstItem?.major || [],
+                teaching_fields: firstItem?.teaching_fields || []
+            };
+        }
+        
+        // Case 3: 단일 객체 형태
+        if (typeof additionalInfo === 'object') {
+            console.log(`🎯 [${studentName}] 단일 객체 형태:`, additionalInfo);
+            
+            return {
+                gender: additionalInfo.gender || '미정',
+                major: additionalInfo.major || [],
+                teaching_fields: additionalInfo.teaching_fields || []
+            };
+        }
+        
+        // Case 4: 예상치 못한 형태
+        console.error(`❌ [${studentName}] 예상치 못한 데이터 형태:`, typeof additionalInfo, additionalInfo);
+        return { gender: '미정', major: [], teaching_fields: [] };
+    },
+
+    /**
      * 학당별 배정된 학생 목록 조회 (추가 정보 포함)
      * @param {object} supabaseClient - Supabase 클라이언트 인스턴스
      * @param {string} shortInstituteName - 간단한 학당명
@@ -180,15 +230,39 @@ const InstituteMatcher = {
                 throw error;
             }
             
-            // 3. 데이터 구조 정규화
-            const students = (data || []).map(student => ({
-                ...student,
-                gender: student.student_additional_info?.[0]?.gender || '미정',
-                major: student.student_additional_info?.[0]?.major || [],
-                teaching_fields: student.student_additional_info?.[0]?.teaching_fields || []
-            }));
+            console.log(`📋 Supabase 원시 응답 (추가 정보 포함):`, data);
+            
+            // 3. 🔧 강화된 데이터 구조 정규화
+            const students = (data || []).map((student, index) => {
+                console.log(`🧑‍🎓 [${index + 1}/${data.length}] 학생 처리 중: ${student.name}`);
+                console.log(`📊 원시 student_additional_info:`, student.student_additional_info);
+                
+                // 강화된 분석 함수 사용
+                const additionalInfo = this.analyzeAdditionalInfo(student.student_additional_info, student.name);
+                
+                const processedStudent = {
+                    ...student,
+                    ...additionalInfo
+                };
+                
+                console.log(`✅ [${student.name}] 최종 처리 결과:`, {
+                    gender: processedStudent.gender,
+                    major: processedStudent.major,
+                    teaching_fields: processedStudent.teaching_fields
+                });
+                
+                return processedStudent;
+            });
             
             console.log(`✅ 학생 조회 (추가 정보 포함) 완료: ${students.length}명 찾음`);
+            
+            // 🔍 최종 결과 요약 로그
+            console.log(`📈 최종 결과 요약:`, students.map(s => ({
+                name: s.name,
+                gender: s.gender,
+                majorCount: s.major?.length || 0,
+                teachingFieldsCount: s.teaching_fields?.length || 0
+            })));
             
             return students;
             
@@ -228,13 +302,19 @@ const InstituteMatcher = {
                 throw error;
             }
             
-            // 데이터 구조 정규화
-            const students = (data || []).map(student => ({
-                ...student,
-                gender: student.student_additional_info?.[0]?.gender || '미정',
-                major: student.student_additional_info?.[0]?.major || [],
-                teaching_fields: student.student_additional_info?.[0]?.teaching_fields || []
-            }));
+            console.log(`📋 부분 검색 원시 응답:`, data);
+            
+            // 강화된 데이터 구조 정규화
+            const students = (data || []).map((student, index) => {
+                console.log(`🧑‍🎓 [부분검색 ${index + 1}] 학생 처리: ${student.name}`);
+                
+                const additionalInfo = this.analyzeAdditionalInfo(student.student_additional_info, student.name);
+                
+                return {
+                    ...student,
+                    ...additionalInfo
+                };
+            });
             
             console.log(`✅ 부분 검색 (추가 정보 포함) 완료: ${students.length}명 찾음`);
             
@@ -254,6 +334,8 @@ const InstituteMatcher = {
      */
     async getStudentsWithAdditionalInfo(supabaseClient, shortInstituteName) {
         try {
+            console.log(`🚀 통합 학생 조회 시작: "${shortInstituteName}"`);
+            
             // 1차: 매핑 테이블 사용 (추가 정보 포함)
             let students = await this.getAssignedStudentsWithAdditionalInfo(supabaseClient, shortInstituteName);
             
@@ -264,6 +346,21 @@ const InstituteMatcher = {
             }
             
             console.log(`🎯 최종 결과 (추가 정보 포함): ${students.length}명의 학생 찾음`);
+            
+            // 🔍 최종 검증 로그
+            if (students.length > 0) {
+                const sampleStudent = students[0];
+                console.log(`🧪 샘플 학생 데이터 검증:`, {
+                    name: sampleStudent.name,
+                    hasGender: !!sampleStudent.gender && sampleStudent.gender !== '미정',
+                    hasMajor: Array.isArray(sampleStudent.major) && sampleStudent.major.length > 0,
+                    hasTeachingFields: Array.isArray(sampleStudent.teaching_fields) && sampleStudent.teaching_fields.length > 0,
+                    rawGender: sampleStudent.gender,
+                    rawMajor: sampleStudent.major,
+                    rawTeachingFields: sampleStudent.teaching_fields
+                });
+            }
+            
             return students;
             
         } catch (error) {
