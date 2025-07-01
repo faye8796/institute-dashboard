@@ -256,7 +256,7 @@ const DashboardApp = {
         }
     },
 
-    // 배치된 인턴 목록 조회 (🆕 InstituteMatcher 모듈 사용)
+    // 배치된 인턴 목록 조회 (🆕 학생 추가 정보 포함)
     async loadAssignedInterns() {
         try {
             console.log('🔍 배치된 인턴 조회 시작:', this.currentManager.institute_name);
@@ -265,19 +265,33 @@ const DashboardApp = {
             if (typeof InstituteMatcher === 'undefined') {
                 console.warn('⚠️ InstituteMatcher 모듈이 로드되지 않았습니다. 기존 방식 사용.');
                 
-                // 기존 방식 fallback
+                // 🆕 기존 방식 fallback - student_additional_info 조인 추가
                 const { data, error } = await this.supabase
                     .from('user_profiles')
-                    .select('*')
+                    .select(`
+                        *,
+                        student_additional_info(
+                            gender,
+                            major,
+                            teaching_fields
+                        )
+                    `)
                     .eq('sejong_institute', this.currentManager.institute_name)
                     .eq('user_type', 'student');
 
                 if (error) throw error;
-                this.assignedInterns = data || [];
+                
+                // 데이터 구조 정규화
+                this.assignedInterns = (data || []).map(intern => ({
+                    ...intern,
+                    gender: intern.student_additional_info?.[0]?.gender || '미정',
+                    major: intern.student_additional_info?.[0]?.major || [],
+                    teaching_fields: intern.student_additional_info?.[0]?.teaching_fields || []
+                }));
                 
             } else {
-                // 🆕 새로운 매칭 시스템 사용
-                this.assignedInterns = await InstituteMatcher.getStudentsWithFallback(
+                // 🆕 새로운 매칭 시스템 사용 - 추가 정보 포함 버전
+                this.assignedInterns = await InstituteMatcher.getStudentsWithAdditionalInfo(
                     this.supabase,
                     this.currentManager.institute_name
                 );
@@ -348,7 +362,7 @@ const DashboardApp = {
         }
     },
 
-    // 인턴 목록 테이블 업데이트
+    // 🆕 인턴 목록 테이블 업데이트 (새로운 컬럼 구조)
     updateInternsTable() {
         const internsTableEl = document.getElementById('internsTableContainer');
         
@@ -369,15 +383,17 @@ const DashboardApp = {
             return;
         }
 
-        // 테이블 형태로 인턴 목록 생성 (🔄 application_original_name 사용)
+        // 🆕 새로운 테이블 구조: 성명, 성별, 전공, 강의 가능 분야, 지원서
         const tableHTML = `
             <div class="interns-table">
                 <table>
                     <thead>
                         <tr>
                             <th>성명</th>
-                            <th>전공분야</th>
-                            <th>지원서 정보</th>
+                            <th>성별</th>
+                            <th>전공</th>
+                            <th>강의 가능 분야</th>
+                            <th>지원서</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -386,12 +402,21 @@ const DashboardApp = {
                                 <td>
                                     <div class="intern-name">
                                         <strong>${intern.name || '-'}</strong>
-                                        <small>${this.formatDate(intern.birth_date) || '-'}</small>
                                     </div>
                                 </td>
                                 <td>
-                                    <div class="intern-field">
-                                        ${intern.field || '미정'}
+                                    <div class="intern-gender">
+                                        ${intern.gender || '미정'}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="intern-major">
+                                        ${this.formatArrayToString(intern.major) || '미정'}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="intern-teaching-fields">
+                                        ${this.formatArrayToString(intern.teaching_fields) || '미정'}
                                     </div>
                                 </td>
                                 <td>
@@ -422,6 +447,16 @@ const DashboardApp = {
         if (typeof lucide !== 'undefined') {
             lucide.createIcons();
         }
+    },
+
+    // 🆕 배열을 문자열로 변환하는 유틸리티 함수
+    formatArrayToString(array) {
+        if (!array || !Array.isArray(array) || array.length === 0) {
+            return '';
+        }
+        
+        // 배열의 각 요소를 쉼표로 구분하여 연결
+        return array.join(', ');
     },
 
     // 다운로드 모달 열기 (🔄 application_original_name 사용)
