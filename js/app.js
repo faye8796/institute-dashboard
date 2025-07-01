@@ -366,7 +366,7 @@ const DashboardApp = {
         }
     },
 
-    // 🔧 배치된 인턴 목록 조회 (완전 수정됨 - Supabase 쿼리 문법 수정)
+    // 🔧 배치된 인턴 목록 조회 (수동 JOIN 방식으로 완전 수정)
     async loadAssignedInterns() {
         try {
             console.log('🔍 배치된 인턴 조회 시작:', this.currentManager.institute_name);
@@ -379,49 +379,18 @@ const DashboardApp = {
                     this.currentManager.institute_name
                 );
             } else {
-                console.warn('⚠️ InstituteMatcher 모듈 없음 - 자체 매핑 시스템 사용');
+                console.warn('⚠️ InstituteMatcher 모듈 없음 - 수동 JOIN 방식 사용');
                 
                 // 🆕 1차: 직접 매핑 변환 시도
                 const fullInstituteName = this.getFullInstituteName(this.currentManager.institute_name);
                 
-                let data = null;
-                let error = null;
-                
-                // 🔧 매핑된 학당명으로 조회 시도 (수정된 쿼리 문법)
-                console.log(`🎯 매핑된 학당명으로 조회: "${this.currentManager.institute_name}" → "${fullInstituteName}"`);
-                
-                const result = await this.supabase
-                    .from('user_profiles')
-                    .select('*, student_additional_info(gender, major, teaching_fields)')
-                    .eq('sejong_institute', fullInstituteName)
-                    .eq('user_type', 'student');
+                await this.loadInternsManualJoin(fullInstituteName);
 
-                data = result.data;
-                error = result.error;
-
-                // 🆕 2차: 매핑 결과가 없으면 부분 문자열 검색 시도 (수정된 쿼리 문법)
-                if (!error && (!data || data.length === 0)) {
+                // 🆕 2차: 매핑 결과가 없으면 부분 문자열 검색 시도
+                if (this.assignedInterns.length === 0) {
                     console.log(`📋 매핑 결과 없음. 부분 검색 시도: "${this.currentManager.institute_name}"`);
-                    
-                    const partialResult = await this.supabase
-                        .from('user_profiles')
-                        .select('*, student_additional_info(gender, major, teaching_fields)')
-                        .ilike('sejong_institute', `%${this.currentManager.institute_name}%`)
-                        .eq('user_type', 'student');
-
-                    data = partialResult.data;
-                    error = partialResult.error;
+                    await this.loadInternsManualJoinPartial(this.currentManager.institute_name);
                 }
-
-                if (error) throw error;
-                
-                // 🆕 데이터 구조 정규화 (매핑과 동일한 형태)
-                this.assignedInterns = (data || []).map(intern => ({
-                    ...intern,
-                    gender: intern.student_additional_info?.[0]?.gender || '미정',
-                    major: intern.student_additional_info?.[0]?.major || [],
-                    teaching_fields: intern.student_additional_info?.[0]?.teaching_fields || []
-                }));
             }
             
             console.log(`✅ 배치된 인턴 목록 로드 완료: ${this.assignedInterns.length}명`);
@@ -433,8 +402,7 @@ const DashboardApp = {
                     name: firstStudent.name,
                     gender: firstStudent.gender,
                     major: firstStudent.major,
-                    teaching_fields: firstStudent.teaching_fields,
-                    raw_additional_info: firstStudent.student_additional_info
+                    teaching_fields: firstStudent.teaching_fields
                 });
             }
             
@@ -442,6 +410,112 @@ const DashboardApp = {
             console.error('❌ 인턴 목록 조회 오류:', error);
             this.assignedInterns = [];
         }
+    },
+
+    // 🆕 수동 JOIN 방식으로 인턴 정보 조회 (매핑된 학당명 사용)
+    async loadInternsManualJoin(fullInstituteName) {
+        console.log(`🎯 수동 JOIN: 매핑된 학당명으로 조회 - "${fullInstituteName}"`);
+
+        // 1단계: user_profiles에서 학생들 조회
+        const { data: students, error: studentsError } = await this.supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('sejong_institute', fullInstituteName)
+            .eq('user_type', 'student');
+
+        if (studentsError) {
+            console.error('❌ 학생 데이터 조회 오류:', studentsError);
+            throw studentsError;
+        }
+
+        if (!students || students.length === 0) {
+            console.log('👥 해당 학당에 배치된 학생이 없습니다.');
+            this.assignedInterns = [];
+            return;
+        }
+
+        console.log(`👥 학생 ${students.length}명 조회됨`);
+
+        // 2단계: student_additional_info에서 추가 정보 조회
+        const studentIds = students.map(s => s.id);
+        const { data: additionalInfos, error: additionalError } = await this.supabase
+            .from('student_additional_info')
+            .select('*')
+            .in('user_id', studentIds);
+
+        if (additionalError) {
+            console.error('❌ 학생 추가 정보 조회 오류:', additionalError);
+            // 추가 정보 조회 실패 시에도 기본 정보는 표시
+        }
+
+        console.log(`📋 추가 정보 ${additionalInfos?.length || 0}개 조회됨`);
+
+        // 3단계: 데이터 결합
+        this.assignedInterns = students.map(student => {
+            const additionalInfo = additionalInfos?.find(info => info.user_id === student.id);
+            
+            return {
+                ...student,
+                gender: additionalInfo?.gender || '미정',
+                major: additionalInfo?.major || [],
+                teaching_fields: additionalInfo?.teaching_fields || []
+            };
+        });
+
+        console.log(`✅ 수동 JOIN 완료: ${this.assignedInterns.length}명의 인턴 정보 결합됨`);
+    },
+
+    // 🆕 수동 JOIN 방식으로 인턴 정보 조회 (부분 검색)
+    async loadInternsManualJoinPartial(instituteName) {
+        console.log(`🔍 수동 JOIN: 부분 검색으로 조회 - "${instituteName}"`);
+
+        // 1단계: user_profiles에서 학생들 조회 (부분 검색)
+        const { data: students, error: studentsError } = await this.supabase
+            .from('user_profiles')
+            .select('*')
+            .ilike('sejong_institute', `%${instituteName}%`)
+            .eq('user_type', 'student');
+
+        if (studentsError) {
+            console.error('❌ 학생 데이터 부분 검색 오류:', studentsError);
+            throw studentsError;
+        }
+
+        if (!students || students.length === 0) {
+            console.log('👥 부분 검색에서도 해당 학당에 배치된 학생이 없습니다.');
+            this.assignedInterns = [];
+            return;
+        }
+
+        console.log(`👥 부분 검색으로 학생 ${students.length}명 조회됨`);
+
+        // 2단계: student_additional_info에서 추가 정보 조회
+        const studentIds = students.map(s => s.id);
+        const { data: additionalInfos, error: additionalError } = await this.supabase
+            .from('student_additional_info')
+            .select('*')
+            .in('user_id', studentIds);
+
+        if (additionalError) {
+            console.error('❌ 학생 추가 정보 조회 오류:', additionalError);
+            // 추가 정보 조회 실패 시에도 기본 정보는 표시
+        }
+
+        console.log(`📋 부분 검색으로 추가 정보 ${additionalInfos?.length || 0}개 조회됨`);
+
+        // 3단계: 데이터 결합
+        this.assignedInterns = students.map(student => {
+            const additionalInfo = additionalInfos?.find(info => info.user_id === student.id);
+            
+            return {
+                ...student,
+                gender: additionalInfo?.gender || '미정',
+                major: additionalInfo?.major || [],
+                teaching_fields: additionalInfo?.teaching_fields || []
+            };
+        });
+
+        console.log(`✅ 부분 검색 수동 JOIN 완료: ${this.assignedInterns.length}명의 인턴 정보 결합됨`);
     },
 
     // 재단 담당자 기본값 설정
