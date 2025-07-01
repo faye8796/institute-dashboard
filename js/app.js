@@ -366,7 +366,7 @@ const DashboardApp = {
         }
     },
 
-    // 🔧 배치된 인턴 목록 조회 (완전 수정됨 - 42개 학당 매핑 지원)
+    // 🔧 배치된 인턴 목록 조회 (완전 수정됨 - Supabase 쿼리 문법 수정)
     async loadAssignedInterns() {
         try {
             console.log('🔍 배치된 인턴 조회 시작:', this.currentManager.institute_name);
@@ -387,39 +387,25 @@ const DashboardApp = {
                 let data = null;
                 let error = null;
                 
-                // 🆕 매핑된 학당명으로 조회 시도
+                // 🔧 매핑된 학당명으로 조회 시도 (수정된 쿼리 문법)
                 console.log(`🎯 매핑된 학당명으로 조회: "${this.currentManager.institute_name}" → "${fullInstituteName}"`);
                 
                 const result = await this.supabase
                     .from('user_profiles')
-                    .select(`
-                        *,
-                        student_additional_info(
-                            gender,
-                            major,
-                            teaching_fields
-                        )
-                    `)
+                    .select('*, student_additional_info(gender, major, teaching_fields)')
                     .eq('sejong_institute', fullInstituteName)
                     .eq('user_type', 'student');
 
                 data = result.data;
                 error = result.error;
 
-                // 🆕 2차: 매핑 결과가 없으면 부분 문자열 검색 시도
+                // 🆕 2차: 매핑 결과가 없으면 부분 문자열 검색 시도 (수정된 쿼리 문법)
                 if (!error && (!data || data.length === 0)) {
                     console.log(`📋 매핑 결과 없음. 부분 검색 시도: "${this.currentManager.institute_name}"`);
                     
                     const partialResult = await this.supabase
                         .from('user_profiles')
-                        .select(`
-                            *,
-                            student_additional_info(
-                                gender,
-                                major,
-                                teaching_fields
-                            )
-                        `)
+                        .select('*, student_additional_info(gender, major, teaching_fields)')
                         .ilike('sejong_institute', `%${this.currentManager.institute_name}%`)
                         .eq('user_type', 'student');
 
@@ -447,7 +433,8 @@ const DashboardApp = {
                     name: firstStudent.name,
                     gender: firstStudent.gender,
                     major: firstStudent.major,
-                    teaching_fields: firstStudent.teaching_fields
+                    teaching_fields: firstStudent.teaching_fields,
+                    raw_additional_info: firstStudent.student_additional_info
                 });
             }
             
