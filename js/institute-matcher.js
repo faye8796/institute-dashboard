@@ -148,10 +148,10 @@ const InstituteMatcher = {
     },
 
     /**
-     * 🔧 강화된 데이터 구조 분석 함수
+     * 🔧 강화된 데이터 구조 분석 함수 (주당 근무시간 포함)
      * @param {any} additionalInfo - student_additional_info 데이터
      * @param {string} studentName - 학생 이름 (디버깅용)
-     * @returns {object} 정규화된 추가 정보
+     * @returns {object} 정규화된 추가 정보 (주당 근무시간 포함)
      */
     analyzeAdditionalInfo(additionalInfo, studentName = 'Unknown') {
         console.log(`🔍 [${studentName}] 추가 정보 분석 시작:`, additionalInfo);
@@ -159,7 +159,12 @@ const InstituteMatcher = {
         // Case 1: undefined 또는 null
         if (!additionalInfo) {
             console.warn(`⚠️ [${studentName}] 추가 정보가 없습니다 (undefined/null)`);
-            return { gender: '미정', major: [], teaching_fields: [] };
+            return { 
+                gender: '미정', 
+                major: [], 
+                teaching_fields: [],
+                weekly_working_hours: null  // 🆕 주당 근무시간 추가
+            };
         }
         
         // Case 2: 배열 형태
@@ -168,7 +173,12 @@ const InstituteMatcher = {
             
             if (additionalInfo.length === 0) {
                 console.warn(`⚠️ [${studentName}] 빈 배열입니다`);
-                return { gender: '미정', major: [], teaching_fields: [] };
+                return { 
+                    gender: '미정', 
+                    major: [], 
+                    teaching_fields: [],
+                    weekly_working_hours: null  // 🆕 주당 근무시간 추가
+                };
             }
             
             const firstItem = additionalInfo[0];
@@ -177,7 +187,8 @@ const InstituteMatcher = {
             return {
                 gender: firstItem?.gender || '미정',
                 major: firstItem?.major || [],
-                teaching_fields: firstItem?.teaching_fields || []
+                teaching_fields: firstItem?.teaching_fields || [],
+                weekly_working_hours: firstItem?.weekly_working_hours || null  // 🆕 주당 근무시간 추가
             };
         }
         
@@ -188,20 +199,26 @@ const InstituteMatcher = {
             return {
                 gender: additionalInfo.gender || '미정',
                 major: additionalInfo.major || [],
-                teaching_fields: additionalInfo.teaching_fields || []
+                teaching_fields: additionalInfo.teaching_fields || [],
+                weekly_working_hours: additionalInfo.weekly_working_hours || null  // 🆕 주당 근무시간 추가
             };
         }
         
         // Case 4: 예상치 못한 형태
         console.error(`❌ [${studentName}] 예상치 못한 데이터 형태:`, typeof additionalInfo, additionalInfo);
-        return { gender: '미정', major: [], teaching_fields: [] };
+        return { 
+            gender: '미정', 
+            major: [], 
+            teaching_fields: [],
+            weekly_working_hours: null  // 🆕 주당 근무시간 추가
+        };
     },
 
     /**
-     * 학당별 배정된 학생 목록 조회 (추가 정보 포함)
+     * 학당별 배정된 학생 목록 조회 (추가 정보 포함, 주당 근무시간 포함)
      * @param {object} supabaseClient - Supabase 클라이언트 인스턴스
      * @param {string} shortInstituteName - 간단한 학당명
-     * @returns {Promise<Array>} 배정된 학생 목록 (성별, 전공, 강의 가능 분야 포함)
+     * @returns {Promise<Array>} 배정된 학생 목록 (성별, 전공, 강의 가능 분야, 주당 근무시간 포함)
      */
     async getAssignedStudentsWithAdditionalInfo(supabaseClient, shortInstituteName) {
         try {
@@ -210,7 +227,7 @@ const InstituteMatcher = {
             
             console.log(`🔍 학생 조회 (추가 정보 포함) 시작: "${shortInstituteName}" → "${fullInstituteName}"`);
             
-            // 2. user_profiles와 student_additional_info 조인 조회
+            // 2. user_profiles와 student_additional_info 조인 조회 (🆕 주당 근무시간 포함)
             const { data, error } = await supabaseClient
                 .from('user_profiles')
                 .select(`
@@ -218,7 +235,8 @@ const InstituteMatcher = {
                     student_additional_info(
                         gender,
                         major,
-                        teaching_fields
+                        teaching_fields,
+                        weekly_working_hours
                     )
                 `)
                 .eq('sejong_institute', fullInstituteName)
@@ -232,12 +250,12 @@ const InstituteMatcher = {
             
             console.log(`📋 Supabase 원시 응답 (추가 정보 포함):`, data);
             
-            // 3. 🔧 강화된 데이터 구조 정규화
+            // 3. 🔧 강화된 데이터 구조 정규화 (주당 근무시간 포함)
             const students = (data || []).map((student, index) => {
                 console.log(`🧑‍🎓 [${index + 1}/${data.length}] 학생 처리 중: ${student.name}`);
                 console.log(`📊 원시 student_additional_info:`, student.student_additional_info);
                 
-                // 강화된 분석 함수 사용
+                // 강화된 분석 함수 사용 (주당 근무시간 포함)
                 const additionalInfo = this.analyzeAdditionalInfo(student.student_additional_info, student.name);
                 
                 const processedStudent = {
@@ -248,7 +266,8 @@ const InstituteMatcher = {
                 console.log(`✅ [${student.name}] 최종 처리 결과:`, {
                     gender: processedStudent.gender,
                     major: processedStudent.major,
-                    teaching_fields: processedStudent.teaching_fields
+                    teaching_fields: processedStudent.teaching_fields,
+                    weekly_working_hours: processedStudent.weekly_working_hours  // 🆕 주당 근무시간 로그 추가
                 });
                 
                 return processedStudent;
@@ -256,12 +275,13 @@ const InstituteMatcher = {
             
             console.log(`✅ 학생 조회 (추가 정보 포함) 완료: ${students.length}명 찾음`);
             
-            // 🔍 최종 결과 요약 로그
+            // 🔍 최종 결과 요약 로그 (주당 근무시간 포함)
             console.log(`📈 최종 결과 요약:`, students.map(s => ({
                 name: s.name,
                 gender: s.gender,
                 majorCount: s.major?.length || 0,
-                teachingFieldsCount: s.teaching_fields?.length || 0
+                teachingFieldsCount: s.teaching_fields?.length || 0,
+                weeklyWorkingHours: s.weekly_working_hours  // 🆕 주당 근무시간 요약 추가
             })));
             
             return students;
@@ -273,16 +293,16 @@ const InstituteMatcher = {
     },
 
     /**
-     * 부분 문자열 검색으로 학당 매칭 (추가 정보 포함)
+     * 부분 문자열 검색으로 학당 매칭 (추가 정보 포함, 주당 근무시간 포함)
      * @param {object} supabaseClient - Supabase 클라이언트 인스턴스
      * @param {string} shortInstituteName - 간단한 학당명
-     * @returns {Promise<Array>} 배정된 학생 목록 (성별, 전공, 강의 가능 분야 포함)
+     * @returns {Promise<Array>} 배정된 학생 목록 (성별, 전공, 강의 가능 분야, 주당 근무시간 포함)
      */
     async getAssignedStudentsByPartialMatchWithAdditionalInfo(supabaseClient, shortInstituteName) {
         try {
             console.log(`🔍 부분 문자열 검색 (추가 정보 포함): "${shortInstituteName}"`);
             
-            // ilike를 사용한 부분 문자열 검색 + 조인
+            // ilike를 사용한 부분 문자열 검색 + 조인 (🆕 주당 근무시간 포함)
             const { data, error } = await supabaseClient
                 .from('user_profiles')
                 .select(`
@@ -290,7 +310,8 @@ const InstituteMatcher = {
                     student_additional_info(
                         gender,
                         major,
-                        teaching_fields
+                        teaching_fields,
+                        weekly_working_hours
                     )
                 `)
                 .ilike('sejong_institute', `%${shortInstituteName}%`)
@@ -304,7 +325,7 @@ const InstituteMatcher = {
             
             console.log(`📋 부분 검색 원시 응답:`, data);
             
-            // 강화된 데이터 구조 정규화
+            // 강화된 데이터 구조 정규화 (주당 근무시간 포함)
             const students = (data || []).map((student, index) => {
                 console.log(`🧑‍🎓 [부분검색 ${index + 1}] 학생 처리: ${student.name}`);
                 
@@ -327,19 +348,19 @@ const InstituteMatcher = {
     },
 
     /**
-     * 🎯 통합 학생 조회 함수 (추가 정보 포함, 매핑 + fallback)
+     * 🎯 통합 학생 조회 함수 (추가 정보 포함, 매핑 + fallback, 주당 근무시간 포함)
      * @param {object} supabaseClient - Supabase 클라이언트 인스턴스
      * @param {string} shortInstituteName - 간단한 학당명
-     * @returns {Promise<Array>} 배정된 학생 목록 (성별, 전공, 강의 가능 분야 포함)
+     * @returns {Promise<Array>} 배정된 학생 목록 (성별, 전공, 강의 가능 분야, 주당 근무시간 포함)
      */
     async getStudentsWithAdditionalInfo(supabaseClient, shortInstituteName) {
         try {
             console.log(`🚀 통합 학생 조회 시작: "${shortInstituteName}"`);
             
-            // 1차: 매핑 테이블 사용 (추가 정보 포함)
+            // 1차: 매핑 테이블 사용 (추가 정보 포함, 주당 근무시간 포함)
             let students = await this.getAssignedStudentsWithAdditionalInfo(supabaseClient, shortInstituteName);
             
-            // 2차: 결과가 없으면 부분 문자열 검색 (추가 정보 포함)
+            // 2차: 결과가 없으면 부분 문자열 검색 (추가 정보 포함, 주당 근무시간 포함)
             if (students.length === 0) {
                 console.log(`📋 매핑 결과 없음. 부분 검색 시도... (추가 정보 포함)`);
                 students = await this.getAssignedStudentsByPartialMatchWithAdditionalInfo(supabaseClient, shortInstituteName);
@@ -347,7 +368,7 @@ const InstituteMatcher = {
             
             console.log(`🎯 최종 결과 (추가 정보 포함): ${students.length}명의 학생 찾음`);
             
-            // 🔍 최종 검증 로그
+            // 🔍 최종 검증 로그 (주당 근무시간 포함)
             if (students.length > 0) {
                 const sampleStudent = students[0];
                 console.log(`🧪 샘플 학생 데이터 검증:`, {
@@ -355,9 +376,11 @@ const InstituteMatcher = {
                     hasGender: !!sampleStudent.gender && sampleStudent.gender !== '미정',
                     hasMajor: Array.isArray(sampleStudent.major) && sampleStudent.major.length > 0,
                     hasTeachingFields: Array.isArray(sampleStudent.teaching_fields) && sampleStudent.teaching_fields.length > 0,
+                    hasWeeklyWorkingHours: sampleStudent.weekly_working_hours !== null && sampleStudent.weekly_working_hours !== undefined,  // 🆕 주당 근무시간 검증
                     rawGender: sampleStudent.gender,
                     rawMajor: sampleStudent.major,
-                    rawTeachingFields: sampleStudent.teaching_fields
+                    rawTeachingFields: sampleStudent.teaching_fields,
+                    rawWeeklyWorkingHours: sampleStudent.weekly_working_hours  // 🆕 주당 근무시간 원시 데이터
                 });
             }
             
