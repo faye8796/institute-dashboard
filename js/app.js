@@ -402,7 +402,8 @@ const DashboardApp = {
                     name: firstStudent.name,
                     gender: firstStudent.gender,
                     major: firstStudent.major,
-                    teaching_fields: firstStudent.teaching_fields
+                    teaching_fields: firstStudent.teaching_fields,
+                    weekly_working_hours: firstStudent.weekly_working_hours
                 });
             }
             
@@ -436,7 +437,7 @@ const DashboardApp = {
 
         console.log(`👥 학생 ${students.length}명 조회됨`);
 
-        // 2단계: student_additional_info에서 추가 정보 조회
+        // 2단계: student_additional_info에서 추가 정보 조회 (주당 근무시간 포함)
         const studentIds = students.map(s => s.id);
         const { data: additionalInfos, error: additionalError } = await this.supabase
             .from('student_additional_info')
@@ -450,7 +451,7 @@ const DashboardApp = {
 
         console.log(`📋 추가 정보 ${additionalInfos?.length || 0}개 조회됨`);
 
-        // 3단계: 데이터 결합
+        // 3단계: 데이터 결합 (주당 근무시간 포함)
         this.assignedInterns = students.map(student => {
             const additionalInfo = additionalInfos?.find(info => info.user_id === student.id);
             
@@ -458,7 +459,8 @@ const DashboardApp = {
                 ...student,
                 gender: additionalInfo?.gender || '미정',
                 major: additionalInfo?.major || [],
-                teaching_fields: additionalInfo?.teaching_fields || []
+                teaching_fields: additionalInfo?.teaching_fields || [],
+                weekly_working_hours: additionalInfo?.weekly_working_hours || null  // 🆕 주당 근무시간 추가
             };
         });
 
@@ -489,7 +491,7 @@ const DashboardApp = {
 
         console.log(`👥 부분 검색으로 학생 ${students.length}명 조회됨`);
 
-        // 2단계: student_additional_info에서 추가 정보 조회
+        // 2단계: student_additional_info에서 추가 정보 조회 (주당 근무시간 포함)
         const studentIds = students.map(s => s.id);
         const { data: additionalInfos, error: additionalError } = await this.supabase
             .from('student_additional_info')
@@ -503,7 +505,7 @@ const DashboardApp = {
 
         console.log(`📋 부분 검색으로 추가 정보 ${additionalInfos?.length || 0}개 조회됨`);
 
-        // 3단계: 데이터 결합
+        // 3단계: 데이터 결합 (주당 근무시간 포함)
         this.assignedInterns = students.map(student => {
             const additionalInfo = additionalInfos?.find(info => info.user_id === student.id);
             
@@ -511,7 +513,8 @@ const DashboardApp = {
                 ...student,
                 gender: additionalInfo?.gender || '미정',
                 major: additionalInfo?.major || [],
-                teaching_fields: additionalInfo?.teaching_fields || []
+                teaching_fields: additionalInfo?.teaching_fields || [],
+                weekly_working_hours: additionalInfo?.weekly_working_hours || null  // 🆕 주당 근무시간 추가
             };
         });
 
@@ -575,7 +578,7 @@ const DashboardApp = {
         }
     },
 
-    // 🆕 인턴 목록 테이블 업데이트 (새로운 컬럼 구조)
+    // 🆕 인턴 목록 테이블 업데이트 (주당 근무시간 컬럼 추가)
     updateInternsTable() {
         const internsTableEl = document.getElementById('internsTableContainer');
         
@@ -596,7 +599,7 @@ const DashboardApp = {
             return;
         }
 
-        // 🆕 새로운 테이블 구조: 성명, 성별, 전공, 강의 가능 분야, 지원서
+        // 🆕 새로운 테이블 구조: 성명, 성별, 전공, 강의 가능 분야, 주당 근무시간, 지원서
         const tableHTML = `
             <div class="interns-table">
                 <table>
@@ -606,6 +609,7 @@ const DashboardApp = {
                             <th>성별</th>
                             <th>전공</th>
                             <th>강의 가능 분야</th>
+                            <th>주당 근무시간</th>
                             <th>지원서</th>
                         </tr>
                     </thead>
@@ -630,6 +634,11 @@ const DashboardApp = {
                                 <td>
                                     <div class="intern-teaching-fields">
                                         ${this.formatArrayToString(intern.teaching_fields) || '미정'}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="intern-working-hours">
+                                        ${this.formatWorkingHours(intern.weekly_working_hours)}
                                     </div>
                                 </td>
                                 <td>
@@ -670,6 +679,19 @@ const DashboardApp = {
         
         // 배열의 각 요소를 쉼표로 구분하여 연결
         return array.join(', ');
+    },
+
+    // 🆕 주당 근무시간 포맷팅 함수
+    formatWorkingHours(hours) {
+        if (hours === null || hours === undefined) {
+            return '<span class="no-data">미정</span>';
+        }
+        
+        if (typeof hours === 'number' && hours > 0) {
+            return `<span class="working-hours">${hours}시간/주</span>`;
+        }
+        
+        return '<span class="no-data">미정</span>';
     },
 
     // 다운로드 모달 열기 (🔄 application_original_name 사용)
