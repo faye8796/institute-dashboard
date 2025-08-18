@@ -297,18 +297,13 @@ const DashboardApp = {
             }
 
             // 1. institute_managers 테이블에서 조회 시도 (컬럼명: institute_name, mail)
-            // 🆕 재단 담당자 정보도 함께 조회
             const { data, error } = await this.supabase
                 .from('institute_managers')
-                .select(`
-                    *,
-                    foundation_manager_name,
-                    foundation_manager_email
-                `)
+                .select('*')
                 .eq('institute_name', instituteName)
-                .eq('mail', managerEmail)
+                .eq('mail', managerEmail)  // 실제 컬럼명 'mail' 사용
                 .single();
-            
+
             if (error) {
                 if (error.code === 'PGRST116') {
                     // 데이터가 없는 경우, user_profiles에서 해당 학당이 있는지 확인
@@ -329,12 +324,9 @@ const DashboardApp = {
                     console.info('학당은 존재하지만 등록된 담당자가 없습니다. 임시 인증을 허용합니다.');
                     return {
                         institute_name: instituteName,
-                        mail: managerEmail,
-                        manager_name: managerEmail.split('@')[0],
-                        id: 'temp-' + Date.now(),
-                        // 🆕 기본 재단 담당자 정보
-                        foundation_manager_name: '미정',
-                        foundation_manager_email: null
+                        mail: managerEmail,  // 'mail' 컬럼명 사용
+                        manager_name: managerEmail.split('@')[0], // 이메일에서 이름 부분 추출
+                        id: 'temp-' + Date.now()
                     };
                 }
                 throw error;
@@ -362,18 +354,18 @@ const DashboardApp = {
     // 대시보드 데이터 로드
     async loadDashboardData() {
         try {
-            // 배치된 인턴 목록 조회
+            // 배치된 인턴 목록 조회 (새로운 매칭 시스템 사용)
             await this.loadAssignedInterns();
-
-            // 🆕 재단 담당자 정보 설정 (이미 authenticateManager에서 조회됨)
-            this.setFoundationManagerFromData();
-
+            
+            // 재단 담당자 정보 설정 (기본값)
+            this.setDefaultFoundationManager();
+            
         } catch (error) {
             console.error('대시보드 데이터 로드 오류:', error);
             throw error;
         }
     },
-    
+
     // 🔧 배치된 인턴 목록 조회 (수동 JOIN 방식으로 완전 수정)
     async loadAssignedInterns() {
         try {
@@ -529,27 +521,16 @@ const DashboardApp = {
         console.log(`✅ 부분 검색 수동 JOIN 완료: ${this.assignedInterns.length}명의 인턴 정보 결합됨`);
     },
 
-    // 🔄 재단 담당자 정보 설정 (DB에서 조회한 데이터 기반)
-    setFoundationManagerFromData() {
-        if (this.currentManager && this.currentManager.foundation_manager_name) {
-            // 🆕 실제 DB 데이터 사용 (성명, 이메일만)
-            this.foundationManager = {
-                name: this.currentManager.foundation_manager_name,
-                email: this.currentManager.foundation_manager_email
-            };
-
-            console.log('✅ 실제 재단 담당자 정보:', this.foundationManager.name);
-        } else {
-            // 🔄 기본값 (성명, 이메일만)
-            this.foundationManager = {
-                name: '미정',
-                email: null
-            };
-
-            console.log('⚠️ 기본 재단 담당자 정보 사용');
-        }
+    // 재단 담당자 기본값 설정
+    setDefaultFoundationManager() {
+        this.foundationManager = {
+            name: '미정',
+            phone: '02-2669-2700',
+            email: 'manager@sejong.or.kr',
+            role: '해외 문화인턴 담당'
+        };
     },
-    
+
     // 대시보드 표시
     showDashboard() {
         // 헤더 정보 업데이트
@@ -593,23 +574,10 @@ const DashboardApp = {
         }
 
         if (foundationManagerEl) {
-            // 🆕 실제 재단 담당자 이름 표시
-            const managerName = this.foundationManager?.name || '미정';
-            foundationManagerEl.textContent = managerName;
-
-            // 🆕 이메일이 있으면 툴팁으로 표시
-            if (this.foundationManager?.email) {
-                foundationManagerEl.setAttribute('title', `이메일: ${this.foundationManager.email}`);
-                foundationManagerEl.style.cursor = 'help';
-            } else {
-                foundationManagerEl.removeAttribute('title');
-                foundationManagerEl.style.cursor = 'default';
-            }
-
-            console.log('📊 재단 담당자 표시:', managerName);
+            foundationManagerEl.textContent = this.foundationManager?.name || '미정';
         }
     },
-    
+
     // 🆕 인턴 목록 테이블 업데이트 (주당 근무시간 컬럼 추가)
     updateInternsTable() {
         const internsTableEl = document.getElementById('internsTableContainer');
