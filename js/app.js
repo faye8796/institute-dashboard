@@ -259,9 +259,15 @@ const DashboardApp = {
                 weekly_working_hours: intern.weekly_working_hours,
                 application_document_url: intern.application_document_url,
                 application_original_name: intern.application_original_name,
-                application_document_name: intern.application_document_name
+                application_document_name: intern.application_document_name,
+                // 🆕 활동일 정보 추가
+                activity_start_date: intern.activity_start_date,
+                activity_end_date: intern.activity_end_date,
+                // 🆕 평가표 정보 추가
+                evaluation_pdf_url: intern.evaluation_pdf_url,
+                evaluation_uploaded_at: intern.evaluation_uploaded_at
             }));
-
+            
             // 디버그: 첫 번째 학생 정보 확인
             if (this.assignedInterns.length > 0) {
                 const firstStudent = this.assignedInterns[0];
@@ -379,7 +385,9 @@ const DashboardApp = {
                             <th>전공</th>
                             <th>강의 가능 분야</th>
                             <th>주당 근무시간</th>
+                            <th>활동 기간</th>
                             <th>지원서</th>
+                            <th>활동평가표</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -411,6 +419,11 @@ const DashboardApp = {
                                     </div>
                                 </td>
                                 <td>
+                                    <div class="activity-period">
+                                        ${this.formatActivityPeriod(intern.activity_start_date, intern.activity_end_date)}
+                                    </div>
+                                </td>
+                                <td>
                                     <div class="document-actions">
                                         ${intern.application_document_url ? `
                                             <button class="download-btn primary" onclick="DashboardApp.openDownloadModal('${intern.id}')">
@@ -423,6 +436,11 @@ const DashboardApp = {
                                                 지원서 없음
                                             </span>
                                         `}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="evaluation-actions">
+                                        ${this.renderEvaluationButtons(intern)}
                                     </div>
                                 </td>
                             </tr>
@@ -665,6 +683,147 @@ const DashboardApp = {
         });
     },
 
+    // 활동 기간 포맷팅
+    formatActivityPeriod(startDate, endDate) {
+        if (!startDate || !endDate) {
+            return '<span class="no-data">미정</span>';
+        }
+        return `
+            <span class="date-start">${startDate}</span>
+            <span class="separator">~</span>
+            <span class="date-end">${endDate}</span>
+        `;
+    },
+
+    // 평가표 버튼 렌더링
+    renderEvaluationButtons(intern) {
+        if (!intern.evaluation_pdf_url) {
+            return `
+                <button class="upload-btn secondary" onclick="DashboardApp.openEvaluationUpload('${intern.id}', '${intern.name}')">
+                    <i data-lucide="upload"></i>
+                    평가표 업로드
+                </button>
+            `;
+        } else {
+            const uploadDate = intern.evaluation_uploaded_at ? 
+                new Date(intern.evaluation_uploaded_at).toLocaleDateString('ko-KR') : 
+                '날짜 정보 없음';
+
+            return `
+                <button class="download-btn primary" onclick="DashboardApp.downloadEvaluation('${intern.id}')">
+                    <i data-lucide="download"></i>
+                    평가표 다운로드
+                </button>
+                <button class="reupload-btn secondary" onclick="DashboardApp.openEvaluationUpload('${intern.id}', '${intern.name}')">
+                    <i data-lucide="refresh-cw"></i>
+                    재업로드
+                </button>
+                <div class="upload-info">
+                    <small>업로드: ${uploadDate}</small>
+                </div>
+            `;
+        }
+    },
+
+    // 평가표 업로드 모달 열기
+    async openEvaluationUpload(internId, internName) {
+        // 파일 input 동적 생성
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = '.pdf';
+        fileInput.style.display = 'none';
+
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // 파일 검증
+            if (!file.name.toLowerCase().endsWith('.pdf')) {
+                alert('PDF 파일만 업로드 가능합니다.');
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) { // 10MB
+                alert('파일 크기는 10MB를 초과할 수 없습니다.');
+                return;
+            }
+
+            // 업로드 확인
+            if (!confirm(`${internName} 학생의 활동평가표를 업로드하시겠습니까?`)) {
+                return;
+            }
+
+            await this.uploadEvaluation(internId, internName, file);
+        });
+
+        document.body.appendChild(fileInput);
+        fileInput.click();
+        document.body.removeChild(fileInput);
+    },
+
+    // 평가표 업로드 처리
+    async uploadEvaluation(internId, internName, file) {
+        try {
+            console.log('📤 평가표 업로드 시작:', internName);
+            this.showLoading(true);
+
+            // 파일명 생성: {user_id}_evaluation.pdf
+            const fileName = `${internId}_evaluation.pdf`;
+
+            // Supabase Storage 업로드
+            const { data: uploadData, error: uploadError } = await this.supabase.storage
+                .from('evaluation-documents')
+                .upload(fileName, file, {
+                    cacheControl: '3600',
+                    upsert: true // 덮어쓰기
+                });
+
+            if (uploadError) throw uploadError;
+
+            // Public URL 생성
+            const { data: urlData } = this.supabase.storage
+                .from('evaluation-documents')
+                .getPublicUrl(fileName);
+
+            // DB 업데이트
+            const { error: updateError } = await this.supabase
+                .from('institute_dashboard_interns')
+                .update({
+                    evaluation_pdf_url: urlData.publicUrl,
+                    evaluation_uploaded_at: new Date().toISOString()
+                })
+                .eq('user_id', internId);
+
+            if (updateError) throw updateError;
+
+            console.log('✅ 평가표 업로드 완료:', urlData.publicUrl);
+
+            // 데이터 새로고침
+            await this.loadAssignedInterns();
+            this.updateInternsTable();
+
+            alert(`${internName} 학생의 활동평가표가 업로드되었습니다.`);
+
+        } catch (error) {
+            console.error('❌ 평가표 업로드 실패:', error);
+            alert('평가표 업로드 중 오류가 발생했습니다.\n' + error.message);
+        } finally {
+            this.showLoading(false);
+        }
+    },
+
+    // 평가표 다운로드
+    async downloadEvaluation(internId) {
+        const intern = this.assignedInterns.find(i => i.id === internId);
+        if (!intern || !intern.evaluation_pdf_url) {
+            alert('평가표를 찾을 수 없습니다.');
+            return;
+        }
+
+        const fileName = `${this.currentManager.institute_name}_${intern.name}_활동평가표.pdf`;
+        await this.downloadDocument(intern.evaluation_pdf_url, fileName);
+    },
+    
     // 디버그 정보 출력
     debug() {
         if (CONFIG.DEV.DEBUG) {
@@ -678,6 +837,9 @@ const DashboardApp = {
             });
         }
     }
+    
+    
+    
 };
 
 // DOM 로드 완료 후 앱 초기화
