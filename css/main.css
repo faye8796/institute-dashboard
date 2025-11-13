@@ -871,3 +871,162 @@ body {
         display: none !important;
     }
 }
+
+/* ========================================
+   🆕 활동 기간 & 활동평가표 스타일
+   ======================================== */
+
+/* 활동 기간 스타일 */
+.activity-period {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.activity-period .date-start,
+.activity-period .date-end {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.activity-period .separator {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.activity-period .no-data {
+    color: var(--text-muted);
+    font-weight: 500;
+    font-style: italic;
+}
+
+/* 활동평가표 액션 스타일 */
+.evaluation-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    align-items: center;
+}
+
+/* 업로드 버튼 */
+.upload-btn.secondary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-normal);
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    white-space: nowrap;
+}
+
+.upload-btn.secondary:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+    background: linear-gradient(135deg, #5568d3, #6441a5);
+}
+
+.upload-btn.secondary:active {
+    transform: translateY(0);
+}
+
+/* 재업로드 버튼 */
+.reupload-btn.secondary {
+    background: var(--secondary-color);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: var(--radius-md);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-normal);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.reupload-btn.secondary:hover {
+    background: var(--secondary-hover);
+    transform: translateY(-1px);
+}
+
+.reupload-btn.secondary:active {
+    transform: translateY(0);
+}
+
+/* 업로드 정보 */
+.upload-info {
+    margin-top: var(--space-xs);
+    text-align: center;
+}
+
+.upload-info small {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+/* 평가표 다운로드 버튼 (이미 있는 download-btn.primary와 구분) */
+.evaluation-actions .download-btn.primary {
+    background: linear-gradient(135deg, var(--success-color), #059669);
+    padding: var(--space-sm) var(--space-md);
+    font-size: 0.85rem;
+}
+
+/* 테이블 헤더 너비 조정 (활동 기간 & 활동평가표 컬럼 추가로 인한) */
+.interns-table th:nth-child(6) {
+    min-width: 120px; /* 활동 기간 */
+}
+
+.interns-table th:nth-child(8) {
+    min-width: 150px; /* 활동평가표 */
+}
+
+/* 모바일 반응형 - 활동평가표 버튼 */
+@media (max-width: 768px) {
+    .evaluation-actions {
+        gap: 6px;
+    }
+    
+    .upload-btn.secondary,
+    .reupload-btn.secondary {
+        font-size: 0.75rem;
+        padding: 6px 10px;
+    }
+    
+    .evaluation-actions .download-btn.primary {
+        font-size: 0.75rem;
+        padding: 6px 10px;
+    }
+    
+    .upload-info small {
+        font-size: 0.7rem;
+    }
+    
+    /* 활동 기간 */
+    .activity-period {
+        font-size: 0.8rem;
+    }
+}
+
+/* 작은 화면에서 테이블 스크롤 */
+@media (max-width: 1024px) {
+    .interns-table {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .interns-table table {
+        min-width: 900px; /* 최소 너비 보장 */
+    }
+}
