@@ -249,8 +249,10 @@ const DashboardApp = {
             console.log(`✅ 배치된 인턴 목록 로드 완료: ${interns.length}명`);
             
             // 데이터 매핑 (컬럼명 변환)
+            // 🔧 수정: assignment_id 추가 (복수 학당 배정 학생 지원)
             this.assignedInterns = interns.map(intern => ({
                 id: intern.user_id,
+                assignment_id: intern.id,  // 🆕 배정 레코드 고유 ID
                 name: intern.student_name,
                 email: intern.student_email,
                 gender: intern.gender || '미정',
@@ -265,7 +267,9 @@ const DashboardApp = {
                 activity_end_date: intern.activity_end_date,
                 // 🆕 평가표 정보 추가
                 evaluation_pdf_url: intern.evaluation_pdf_url,
-                evaluation_uploaded_at: intern.evaluation_uploaded_at
+                evaluation_uploaded_at: intern.evaluation_uploaded_at,
+                // 🆕 학당명 추가 (파일명 생성용)
+                institute_name: intern.institute_name
             }));
             
             // 디버그: 첫 번째 학생 정보 확인
@@ -273,6 +277,7 @@ const DashboardApp = {
                 const firstStudent = this.assignedInterns[0];
                 console.log('🧑‍🎓 첫 번째 학생 정보:', {
                     name: firstStudent.name,
+                    assignment_id: firstStudent.assignment_id,
                     gender: firstStudent.gender,
                     major: firstStudent.major,
                     teaching_fields: firstStudent.teaching_fields,
@@ -375,6 +380,7 @@ const DashboardApp = {
         }
 
         // 테이블 구조: 성명, 성별, 전공, 강의 가능 분야, 주당 근무시간, 지원서
+        // 🔧 수정: assignment_id 사용
         const tableHTML = `
             <div class="interns-table">
                 <table>
@@ -426,7 +432,7 @@ const DashboardApp = {
                                 <td>
                                     <div class="document-actions">
                                         ${intern.application_document_url ? `
-                                            <button class="download-btn primary" onclick="DashboardApp.openDownloadModal('${intern.id}')">
+                                            <button class="download-btn primary" onclick="DashboardApp.openDownloadModal('${intern.assignment_id}')">
                                                 <i data-lucide="download"></i>
                                                 지원서 다운로드
                                             </button>
@@ -481,8 +487,9 @@ const DashboardApp = {
     },
 
     // 다운로드 모달 열기
-    openDownloadModal(internId) {
-        const intern = this.assignedInterns.find(i => i.id === internId);
+    // 🔧 수정: assignment_id로 조회
+    openDownloadModal(assignmentId) {
+        const intern = this.assignedInterns.find(i => i.assignment_id === assignmentId);
         if (!intern || !intern.application_document_url) {
             alert('지원서류를 찾을 수 없습니다.');
             return;
@@ -494,7 +501,7 @@ const DashboardApp = {
                                 `${intern.name}_지원서.pdf`;
 
         this.currentDocument = {
-            internId: internId,
+            assignmentId: assignmentId,
             internName: intern.name,
             fileName: originalFileName,
             url: intern.application_document_url
@@ -696,10 +703,11 @@ const DashboardApp = {
     },
 
     // 평가표 버튼 렌더링
+    // 🔧 수정: assignment_id 사용
     renderEvaluationButtons(intern) {
         if (!intern.evaluation_pdf_url) {
             return `
-                <button class="upload-btn secondary" onclick="DashboardApp.openEvaluationUpload('${intern.id}', '${intern.name}')">
+                <button class="upload-btn secondary" onclick="DashboardApp.openEvaluationUpload('${intern.assignment_id}', '${intern.name}')">
                     <i data-lucide="upload"></i>
                     평가표 업로드
                 </button>
@@ -710,11 +718,11 @@ const DashboardApp = {
                 '날짜 정보 없음';
 
             return `
-                <button class="download-btn primary" onclick="DashboardApp.downloadEvaluation('${intern.id}')">
+                <button class="download-btn primary" onclick="DashboardApp.downloadEvaluation('${intern.assignment_id}')">
                     <i data-lucide="download"></i>
                     평가표 다운로드
                 </button>
-                <button class="reupload-btn secondary" onclick="DashboardApp.openEvaluationUpload('${intern.id}', '${intern.name}')">
+                <button class="reupload-btn secondary" onclick="DashboardApp.openEvaluationUpload('${intern.assignment_id}', '${intern.name}')">
                     <i data-lucide="refresh-cw"></i>
                     재업로드
                 </button>
@@ -726,7 +734,8 @@ const DashboardApp = {
     },
 
     // 평가표 업로드 모달 열기
-    async openEvaluationUpload(internId, internName) {
+    // 🔧 수정: assignment_id 사용
+    async openEvaluationUpload(assignmentId, internName) {
         // 파일 input 동적 생성
         const fileInput = document.createElement('input');
         fileInput.type = 'file';
@@ -753,7 +762,7 @@ const DashboardApp = {
                 return;
             }
 
-            await this.uploadEvaluation(internId, internName, file);
+            await this.uploadEvaluation(assignmentId, internName, file);
         });
 
         document.body.appendChild(fileInput);
@@ -762,13 +771,21 @@ const DashboardApp = {
     },
 
     // 평가표 업로드 처리
-    async uploadEvaluation(internId, internName, file) {
+    // 🔧 수정: assignment_id로 해당 학당 레코드만 업데이트 (복수 학당 배정 지원)
+    async uploadEvaluation(assignmentId, internName, file) {
         try {
-            console.log('📤 평가표 업로드 시작:', internName);
+            console.log('📤 평가표 업로드 시작:', internName, '배정ID:', assignmentId);
             this.showLoading(true);
 
-            // 파일명 생성: {user_id}_evaluation.pdf
-            const fileName = `${internId}_evaluation.pdf`;
+            // 해당 배정 레코드 찾기
+            const intern = this.assignedInterns.find(i => i.assignment_id === assignmentId);
+            if (!intern) {
+                throw new Error('인턴 정보를 찾을 수 없습니다.');
+            }
+
+            // 🔧 수정: 파일명에 학당명 포함하여 학당별 별도 파일 관리
+            // 파일명: {assignment_id}_evaluation.pdf (고유한 배정 ID 사용)
+            const fileName = `${assignmentId}_evaluation.pdf`;
 
             // Supabase Storage 업로드
             const { data: uploadData, error: uploadError } = await this.supabase.storage
@@ -785,18 +802,19 @@ const DashboardApp = {
                 .from('evaluation-documents')
                 .getPublicUrl(fileName);
 
-            // DB 업데이트
+            // 🔧 핵심 수정: id (배정 레코드 고유 ID)로 해당 학당 레코드만 업데이트
             const { error: updateError } = await this.supabase
                 .from('institute_dashboard_interns')
                 .update({
                     evaluation_pdf_url: urlData.publicUrl,
                     evaluation_uploaded_at: new Date().toISOString()
                 })
-                .eq('user_id', internId);
+                .eq('id', assignmentId);  // 🔧 user_id → id 로 변경
 
             if (updateError) throw updateError;
 
             console.log('✅ 평가표 업로드 완료:', urlData.publicUrl);
+            console.log('✅ 해당 학당 레코드만 업데이트됨:', assignmentId);
 
             // 데이터 새로고침
             await this.loadAssignedInterns();
@@ -813,8 +831,9 @@ const DashboardApp = {
     },
 
     // 평가표 다운로드
-    async downloadEvaluation(internId) {
-        const intern = this.assignedInterns.find(i => i.id === internId);
+    // 🔧 수정: assignment_id로 조회
+    async downloadEvaluation(assignmentId) {
+        const intern = this.assignedInterns.find(i => i.assignment_id === assignmentId);
         if (!intern || !intern.evaluation_pdf_url) {
             alert('평가표를 찾을 수 없습니다.');
             return;
